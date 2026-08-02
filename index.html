@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>古诗背诵打卡</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--primary:#4a7c59;--primary-light:#6a9c79;--primary-dark:#3a6249;--accent:#e8a849;--bg:#f5f0e8;--card:#fff;--text:#2c2c2c;--muted:#888;--border:#ddd;--shadow:0 2px 12px rgba(0,0,0,.08)}
+body{font-family:'Noto Serif SC','Songti SC',Georgia,serif;background:var(--bg);color:var(--text);min-height:100vh}
+.app{display:flex;flex-direction:column;min-height:100vh}
+/* header */
+.header{background:linear-gradient(135deg,var(--primary-dark),var(--primary));color:#fff;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;box-shadow:var(--shadow)}
+.header .title{font-size:1.4rem;font-weight:700;letter-spacing:2px}
+.header .title span{font-size:.75rem;opacity:.8;display:block;font-weight:400;letter-spacing:0}
+.header-right{display:flex;align-items:center;gap:10px}
+.btn{background:var(--primary);color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:.9rem;transition:background .2s,transform .1s;font-family:inherit}
+.btn:hover{background:var(--primary-light);transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.btn-accent{background:var(--accent);color:#fff}
+.btn-accent:hover{background:#f0b85a}
+.btn-outline{background:transparent;color:var(--primary);border:1.5px solid var(--primary)}
+.btn-outline:hover{background:var(--primary);color:#fff}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.badge{background:var(--accent);color:#fff;border-radius:20px;padding:2px 10px;font-size:.75rem;font-weight:700}
+/* main layout */
+.main{display:flex;flex:1;overflow:hidden;height:calc(100vh - 70px)}
+.sidebar{width:280px;background:var(--card);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+.sidebar-tabs{display:flex;border-bottom:1px solid var(--border)}
+.sidebar-tab{flex:1;padding:10px 8px;text-align:center;font-size:.85rem;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted);transition:all .2s}
+.sidebar-tab.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:600}
+.sidebar-content{flex:1;overflow-y:auto;padding:12px}
+.sidebar-content::-webkit-scrollbar{width:4px}
+.sidebar-content::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+/* level tabs */
+.level-tabs{display:flex;gap:6px;padding:10px 12px;background:#fafaf7;border-bottom:1px solid var(--border)}
+.level-tab{padding:6px 14px;border-radius:20px;font-size:.82rem;cursor:pointer;border:1.5px solid var(--border);background:#fff;color:var(--muted);transition:all .2s;white-space:nowrap}
+.level-tab.active{border-color:var(--primary);background:var(--primary);color:#fff;font-weight:600}
+/* unit list */
+.unit-item{padding:10px 14px;border-radius:8px;cursor:pointer;margin-bottom:4px;font-size:.88rem;color:var(--text);transition:all .15s;border:1.5px solid transparent;display:flex;justify-content:space-between;align-items:center}
+.unit-item:hover{background:#f0ede5}
+.unit-item.active{background:#e8f0e9;border-color:var(--primary);color:var(--primary-dark);font-weight:600}
+.unit-item .count{background:var(--bg);color:var(--muted);border-radius:10px;padding:1px 8px;font-size:.72rem}
+/* poem list */
+.poem-list{padding:12px}
+.poem-card{padding:12px 14px;border-radius:10px;border:1.5px solid var(--border);margin-bottom:8px;cursor:pointer;transition:all .2s;background:#fff}
+.poem-card:hover{border-color:var(--primary-light);box-shadow:var(--shadow)}
+.poem-card.active{border-color:var(--primary);background:#e8f4ec}
+.poem-card h4{font-size:.95rem;margin-bottom:4px}
+.poem-card p{font-size:.78rem;color:var(--muted)}
+.poem-card .meta{display:flex;gap:8px;font-size:.75rem;color:var(--muted);margin-top:4px}
+.poem-card .checkin-badge{float:right;background:#4a7c59;color:#fff;padding:2px 8px;border-radius:10px;font-size:.7rem}
+/* detail panel */
+.detail-panel{flex:1;overflow-y:auto;padding:24px;background:var(--bg)}
+.detail-panel::-webkit-scrollbar{width:6px}
+.detail-panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.detail-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--muted);gap:12px}
+.detail-empty .icon{font-size:4rem;opacity:.3}
+.detail-box{background:var(--card);border-radius:16px;padding:28px 32px;box-shadow:var(--shadow);max-width:800px;margin:0 auto}
+.detail-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+.detail-title h2{font-size:1.6rem;color:var(--primary-dark);margin-bottom:4px}
+.detail-title .author{color:var(--muted);font-size:.9rem}
+.detail-actions{display:flex;gap:8px;flex-wrap:wrap}
+.checkin-btn{background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;border:none;border-radius:10px;padding:10px 20px;cursor:pointer;font-size:.9rem;font-weight:600;transition:all .2s;font-family:inherit;display:flex;align-items:center;gap:6px}
+.checkin-btn:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(74,124,89,.3)}
+.checkin-btn:active{transform:translateY(0)}
+.checkin-btn.checked{background:linear-gradient(135deg,#888,#aaa);cursor:default;transform:none;box-shadow:none}
+.checkin-btn.checked:hover{transform:none;box-shadow:none}
+/* pinyin text */
+.shici-wrap{margin:20px 0;line-height:2.2;font-size:1.15rem;border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:16px 0}
+.shici-row{display:flex;flex-wrap:wrap;gap:4px 16px;margin-bottom:4px}
+.char-group{display:inline-flex;flex-direction:column;align-items:center;margin-right:8px;line-height:1.4}
+.pinyin{font-size:.7rem;color:var(--primary);letter-spacing:0;font-family:sans-serif;min-height:1em}
+.hanzi{font-size:1.2rem;color:var(--text);min-height:1.4em}
+/* sections */
+.detail-section{margin-top:20px}
+.section-title{font-size:.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.shiyi{margin-top:14px;line-height:2;font-size:.95rem}
+.shiyi-item{display:flex;gap:10px;margin-bottom:8px}
+.shiyi-num{color:var(--accent);font-weight:700;min-width:20px}
+.shiyi-text{color:#444;line-height:1.7}
+/* modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px}
+.modal-overlay.hidden{display:none}
+.modal{background:#fff;border-radius:16px;padding:28px;max-width:440px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto}
+.modal h3{font-size:1.2rem;color:var(--primary-dark);margin-bottom:16px}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:6px;font-weight:600}
+.form-group input{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:.95rem;font-family:inherit;outline:none;transition:border-color .2s}
+.form-group input:focus{border-color:var(--primary)}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+.account-list{margin-top:8px}
+.account-item{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:8px;border:1.5px solid var(--border);margin-bottom:6px;cursor:pointer;transition:all .2s}
+.account-item:hover{border-color:var(--primary-light)}
+.account-item.current{border-color:var(--primary);background:#e8f4ec}
+.account-item .acc-name{font-weight:600}
+.account-item .acc-info{font-size:.78rem;color:var(--muted)}
+.account-item .acc-actions{display:flex;gap:6px}
+/* records panel */
+.records-section{padding:20px 24px;max-width:900px;margin:0 auto}
+.records-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.stats-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.stat-card{background:var(--card);border-radius:12px;padding:16px 20px;flex:1;min-width:140px;box-shadow:var(--shadow);text-align:center}
+.stat-card .num{font-size:2rem;font-weight:700;color:var(--primary-dark)}
+.stat-card .label{font-size:.8rem;color:var(--muted);margin-top:4px}
+.record-item{background:var(--card);border-radius:10px;padding:14px 18px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.05);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;border-left:4px solid var(--primary)}
+.record-item .poem-name{font-weight:600;font-size:.95rem}
+.record-item .poem-meta{font-size:.78rem;color:var(--muted)}
+.record-item .record-time{font-size:.78rem;color:var(--muted)}
+.record-item.today{border-left-color:var(--accent)}
+/* speak button */
+.speak-btn{background:#eef5f0;color:var(--primary);border:1.5px solid var(--primary);border-radius:8px;padding:7px 14px;cursor:pointer;font-size:.82rem;font-family:inherit;transition:all .2s;display:inline-flex;align-items:center;gap:5px;margin-top:12px}
+.speak-btn:hover{background:var(--primary);color:#fff}
+.speak-btn.playing{background:var(--accent);border-color:var(--accent);color:#fff}
+/* loading */
+.loading{display:none;text-align:center;padding:40px;color:var(--muted)}
+.loading.active{display:block}
+@media(max-width:768px){
+.main{flex-direction:column;height:auto}
+.sidebar{width:100%;max-height:50vh}
+.detail-panel{padding:16px}
+.detail-box{padding:20px 18px}
+.header .title{font-size:1.1rem}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <div class="title">
+      📜 古诗背诵打卡
+      <span>传承经典，诗意相伴</span>
+    </div>
+    <div class="header-right">
+      <span id="currentAccount" style="font-size:.9rem;opacity:.9"></span>
+      <button class="btn btn-accent" onclick="openAccountModal()">👤 切换账号</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="level-tabs">
+        <div class="level-tab active" onclick="setLevel('primary')">小学</div>
+        <div class="level-tab" onclick="setLevel('middle')">初中</div>
+        <div class="level-tab" onclick="setLevel('high')">高中</div>
+      </div>
+      <div class="sidebar-tabs">
+        <div class="sidebar-tab active" id="tab-units" onclick="switchTab('units')">📖 单元</div>
+        <div class="sidebar-tab" id="tab-poems" onclick="switchTab('poems')">📚 诗词</div>
+        <div class="sidebar-tab" id="tab-records" onclick="switchTab('records')">✅ 打卡</div>
+      </div>
+      <div class="sidebar-content" id="sidebar-content">
+        <!-- dynamic -->
+      </div>
+    </div>
+
+    <!-- Detail Panel -->
+    <div class="detail-panel" id="detail-panel">
+      <div class="detail-empty" id="detail-empty">
+        <div class="icon">📜</div>
+        <div style="font-size:1.1rem">选择一首古诗开始学习</div>
+        <div style="font-size:.85rem">点击左侧列表中的诗词，查看注音、释义并打卡</div>
+      </div>
+      <div id="detail-content" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Account Modal -->
+<div class="modal-overlay hidden" id="accountModal">
+  <div class="modal">
+    <h3>👤 账号管理</h3>
+    <div class="account-list" id="accountList"></div>
+    <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
+      <div class="form-group">
+        <label>➕ 添加新账号</label>
+        <input type="text" id="newAccountName" placeholder="输入账号名称，如：张同学">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="closeAccountModal()">取消</button>
+        <button class="btn btn-accent" onclick="addAccount()">添加</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== DATA =====
+const POETRY_DATA = {
+  primary: {
+    label: '小学',
+    units: [
+      { id: 'p1u1', label: '一年级上册', items: [
+        {id:'p1-1',title:'咏鹅',author:'骆宾王',dynasty:'唐',grade:'小一',content:['鹅鹅鹅，曲项向天歌。白毛浮绿水，红掌拨清波。'],
+          shiyi:['1. 咏：用诗词的形式来赞美、歌颂。\n2. 曲项：弯曲着脖子。\n3. 掌：脚掌。\n4. 拨：划动。\n诗意：鹅啊鹅，弯着脖子朝着天空唱歌。洁白的羽毛漂浮在碧绿的水面上，红色的脚掌划动着清澈的水波。'],
+          audioText:'鹅鹅鹅，曲项向天歌。白毛浮绿水，红掌拨清波。'},
+        {id:'p1-2',title:'江南',author:'汉乐府',dynasty:'汉',grade:'小一',content:['江南可采莲，莲叶何田田。鱼戏莲叶间。鱼戏莲叶东，鱼戏莲叶西，鱼戏莲叶南，鱼戏莲叶北。'],
+          shiyi:['1. 江南：长江以南的地区。\n2. 可：适合、正好。\n3. 何：多么。\n4. 田田：形容莲叶茂盛相连的样子。\n诗意：江南正好采莲子，莲叶长得多么茂盛。鱼儿在莲叶间嬉戏。一会儿游到莲叶东边，一会儿游到莲叶西边，一会儿游到莲叶南边，一会儿游到莲叶北边。'],
+          audioText:'江南可采莲，莲叶何田田。鱼戏莲叶间。鱼戏莲叶东，鱼戏莲叶西，鱼戏莲叶南，鱼戏莲叶北。'},
+        {id:'p1-3',title:'画',author:'王维',dynasty:'唐',grade:'小一',content:['远看山有色，近听水无声。春去花还在，人来鸟不惊。'],
+          shiyi:['1. 色：颜色。\n2. 惊：受惊、害怕。\n诗意：远远看去山有鲜明的颜色，靠近听却没有水的声音。春天过去了花还在盛开，人走过来鸟也不会受惊飞走。这是一幅画中的景象。'],
+          audioText:'远看山有色，近听水无声。春去花还在，人来鸟不惊。'},
+      ]},
+      { id: 'p1u2', label: '一年级下册', items: [
+        {id:'p1-4',title:'静夜思',author:'李白',dynasty:'唐',grade:'小一',content:['床前明月光，疑是地上霜。举头望明月，低头思故乡。'],
+          shiyi:['1. 静夜思：寂静夜晚的思绪。\n2. 疑：好像。\n3. 举头：抬起头。\n4. 思：想念、思念。\n诗意：床前洒下一片明亮的月光，好像地上铺了一层霜。抬起头凝望着天上的月亮，低下头便又思念起故乡来。'],
+          audioText:'床前明月光，疑是地上霜。举头望明月，低头思故乡。'},
+        {id:'p1-5',title:'春晓',author:'孟浩然',dynasty:'唐',grade:'小一',content:['春眠不觉晓，处处闻啼鸟。夜来风雨声，花落知多少。'],
+          shiyi:['1. 春晓：春天的早晨。\n2. 眠：睡觉。\n3. 不觉晓：不知不觉天亮了。\n4. 闻啼鸟：听到鸟的啼叫声。\n诗意：春天睡得很香甜，不知不觉天就亮了，到处都能听到鸟的叫声。想起夜里传来的风雨声，不知打落了多少花朵。'],
+          audioText:'春眠不觉晓，处处闻啼鸟。夜来风雨声，花落知多少。'},
+        {id:'p1-6',title:'赠汪伦',author:'李白',dynasty:'唐',grade:'小一',content:['李白乘舟将欲行，忽闻岸上踏歌声。桃花潭水深千尺，不及汪伦送我情。'],
+          shiyi:['1. 踏歌：一边走一边唱，是古时的一种歌唱方式。\n2. 桃花潭：地名，在今安徽泾县。\n3. 不及：比不上。\n诗意：李白我乘上小船刚要出发，忽然听到岸上传来踏歌的声音。桃花潭的水有千尺深，也比不上汪伦送别我的情意深重。'],
+          audioText:'李白乘舟将欲行，忽闻岸上踏歌声。桃花潭水深千尺，不及汪伦送我情。'},
+      ]},
+      { id: 'p2u1', label: '二年级上册', items: [
+        {id:'p2-1',title:'登鹳雀楼',author:'王之涣',dynasty:'唐',grade:'小二',content:['白日依山尽，黄河入海流。欲穷千里目，更上一层楼。'],
+          shiyi:['1. 白日：夕阳。\n2. 依：靠着、依傍。\n3. 尽：消失。\n4. 穷：尽，使……达到尽头。\n5. 千里目：看到千里的眼睛，此处指极目远眺。\n诗意：夕阳靠着群山渐渐西沉，黄河向着大海奔流。要想看到千里之外的风光，就要再登上一层楼。比喻要取得更大的成就，就要不断努力上进。'],
+          audioText:'白日依山尽，黄河入海流。欲穷千里目，更上一层楼。'},
+        {id:'p2-2',title:'望庐山瀑布',author:'李白',dynasty:'唐',grade:'小二',content:['日照香炉生紫烟，遥看瀑布挂前川。飞流直下三千尺，疑是银河落九天。'],
+          shiyi:['1. 香炉：香炉峰，庐山的山峰之一。\n2. 紫烟：紫色的云烟。\n3. 前川：前面的河流。\n4. 银河：天河。\n5. 九天：天的最高处。\n诗意：太阳照耀着香炉峰升起了紫色的云烟，远远望去瀑布像一条白练挂在山前。水流从高处飞泻而下有三千尺长，让人怀疑是天河从天上落到了人间。'],
+          audioText:'日照香炉生紫烟，遥看瀑布挂前川。飞流直下三千尺，疑是银河落九天。'},
+        {id:'p2-3',title:'江雪',author:'柳宗元',dynasty:'唐',grade:'小二',content:['千山鸟飞绝，万径人踪灭。孤舟蓑笠翁，独钓寒江雪。'],
+          shiyi:['1. 绝：绝迹、消失。\n2. 径：小路。\n3. 蓑笠翁：穿着蓑衣戴着斗笠的老翁。\n诗意：所有的山上都没有了鸟的影子，所有的小路上也没有人的踪迹。只有一位穿着蓑衣戴着斗笠的老渔翁，独自在寒冷的江面上钓鱼。'],
+          audioText:'千山鸟飞绝，万径人踪灭。孤舟蓑笠翁，独钓寒江雪。'},
+      ]},
+      { id: 'p2u2', label: '二年级下册', items: [
+        {id:'p2-4',title:'咏柳',author:'贺知章',dynasty:'唐',grade:'小二',content:['碧玉妆成一树高，万条垂下绿丝绦。不知细叶谁裁出，二月春风似剪刀。'],
+          shiyi:['1. 碧玉：青绿色的玉，这里形容柳叶的嫩绿。\n2. 妆成：打扮成。\n3. 丝绦：丝带，这里形容柳枝。\n4. 似：像。\n诗意：高高的柳树像是用碧玉妆扮成的，无数柳条垂下来就像绿色的丝带。不知道这细嫩的柳叶是谁裁剪出来的，二月的春风就像一把剪刀。'],
+          audioText:'碧玉妆成一树高，万条垂下绿丝绦。不知细叶谁裁出，二月春风似剪刀。'},
+        {id:'p2-5',title:'村居',author:'高鼎',dynasty:'清',grade:'小二',content:['草长莺飞二月天，拂堤杨柳醉春烟。儿童散学归来早，忙趁东风放纸鸢。'],
+          shiyi:['1. 村居：在乡村居住时看到的景象。\n2. 拂：轻轻擦过。\n3. 醉春烟：笼罩在春天的雾气里，如同沉醉。\n4. 纸鸢：风筝。\n诗意：草木生长、黄莺飞舞的早春二月，杨柳轻轻拂过堤岸，在春烟中像喝醉了一样。村里的孩子们放学回来得很早，赶忙趁着东风放起了风筝。'],
+          audioText:'草长莺飞二月天，拂堤杨柳醉春烟。儿童散学归来早，忙趁东风放纸鸢。'},
+      ]},
+      { id: 'p3u1', label: '三年级上册', items: [
+        {id:'p3-1',title:'山行',author:'杜牧',dynasty:'唐',grade:'小三',content:['远上寒山石径斜，白云生处有人家。停车坐爱枫林晚，霜叶红于二月花。'],
+          shiyi:['1. 山行：在山间行走。\n2. 寒山：深秋的山。\n3. 坐：因为。\n4. 于：比。\n诗意：沿着弯弯曲曲的石径登上深秋的山，在白云升起的深山处有几户人家。我停下车来是因为喜爱这傍晚的枫林，经霜的枫叶比二月的春花还要红艳。'],
+          audioText:'远上寒山石径斜，白云生处有人家。停车坐爱枫林晚，霜叶红于二月花。'},
+        {id:'p3-2',title:'赠刘景文',author:'苏轼',dynasty:'宋',grade:'小三',content:['荷尽已无擎雨盖，菊残犹有傲霜枝。一年好景君须记，正是橙黄橘绿时。'],
+          shiyi:['1. 荷尽：荷花凋谢了。\n2. 擎雨盖：撑着雨伞的叶子，指荷叶。\n3. 傲霜：傲视霜寒。\n4. 君：你。\n诗意：荷花凋谢了，荷叶也枯萎了，菊花虽然残败，但仍有挺立在霜中的枝条。一年中最好的景色你一定要记住，正是这橙子金黄、橘子青绿的时节啊！'],
+          audioText:'荷尽已无擎雨盖，菊残犹有傲霜枝。一年好景君须记，正是橙黄橘绿时。'},
+        {id:'p3-3',title:'夜书所见',author:'叶绍翁',dynasty:'宋',grade:'小三',content:['萧萧梧叶送寒声，江上秋风动客情。知有儿童挑促织，夜深篱落一灯明。'],
+          shiyi:['1. 萧萧：风吹梧叶的声音。\n2. 客情：客居他乡的思乡之情。\n3. 促织：蟋蟀。\n4. 篱落：篱笆。\n诗意：萧萧的梧桐叶送来阵阵寒意，江上的秋风吹动了我客居他乡的愁情。我知道是孩子们在捉蟋蟀，深夜里篱笆下还有一盏灯火。'],
+          audioText:'萧萧梧叶送寒声，江上秋风动客情。知有儿童挑促织，夜深篱落一灯明。'},
+      ]},
+      { id: 'p3u2', label: '三年级下册', items: [
+        {id:'p3-4',title:'绝句',author:'杜甫',dynasty:'唐',grade:'小三',content:['两个黄鹂鸣翠柳，一行白鹭上青天。窗含西岭千秋雪，门泊东吴万里船。'],
+          shiyi:['1. 黄鹂：一种黄色的鸟。\n2. 白鹭：一种白色的鸟。\n3. 含：包含。\n4. 泊：停泊。\n诗意：两只黄鹂在翠绿的柳树上鸣叫，一行白鹭飞上蔚蓝的天空。从窗口可以望见西岭千年不化的积雪，门前停泊着从万里外的东吴来的船只。'],
+          audioText:'两个黄鹂鸣翠柳，一行白鹭上青天。窗含西岭千秋雪，门泊东吴万里船。'},
+        {id:'p3-5',title:'清明',author:'杜牧',dynasty:'唐',grade:'小三',content:['清明时节雨纷纷，路上行人欲断魂。借问酒家何处有，牧童遥指杏花村。'],
+          shiyi:['1. 清明：二十四节气之一，也是传统节日。\n2. 纷纷：雨下得细密而杂乱。\n3. 欲断魂：形容人极度忧愁伤感。\n4. 借问：请问。\n诗意：清明时节细雨纷纷飘落，路上的行人失魂落魄像要断了魂。询问哪里有酒家，牧童远远地指向杏花盛开的村庄。'],
+          audioText:'清明时节雨纷纷，路上行人欲断魂。借问酒家何处有，牧童遥指杏花村。'},
+        {id:'p3-6',title:'惠崇春江晚景',author:'苏轼',dynasty:'宋',grade:'小三',content:['竹外桃花三两枝，春江水暖鸭先知。蒌蒿满地芦芽短，正是河豚欲上时。'],
+          shiyi:['1. 惠崇：北宋僧人，擅长画山水。\n2. 蒌蒿：一种野菜。\n3. 芦芽：芦苇的嫩芽。\n4. 河豚：一种味道鲜美的鱼。\n诗意：竹林外稀疏地伸出两三枝桃花，春天江水暖和起来鸭子最先知道。蒌蒿长满了地，芦苇才刚刚冒出嫩芽，这正是河豚要逆流而上的时节。'],
+          audioText:'竹外桃花三两枝，春江水暖鸭先知。蒌蒿满地芦芽短，正是河豚欲上时。'},
+      ]},
+      { id: 'p4u1', label: '四年级上册', items: [
+        {id:'p4-1',title:'题西林壁',author:'苏轼',dynasty:'宋',grade:'小四',content:['横看成岭侧成峰，远近高低各不同。不识庐山真面目，只缘身在此山中。'],
+          shiyi:['1. 题西林壁：写在西林寺墙壁上的诗。\n2. 缘：因为。\n3. 真面目：真实的庐山面貌。\n诗意：从正面看庐山是连绵的山岭，从侧面看是耸立的山峰，远看近看高处低处各不相同。我认不清庐山的真实面貌，只因为自己就在这座山里面。说明看待事物要全面客观。'],
+          audioText:'横看成岭侧成峰，远近高低各不同。不识庐山真面目，只缘身在此山中。'},
+        {id:'p4-2',title:'游山西村',author:'陆游',dynasty:'宋',grade:'小四',content:['莫笑农家腊酒浑，丰年留客足鸡豚。山重水复疑无路，柳暗花明又一村。'],
+          shiyi:['1. 腊酒：腊月里酿的酒。\n2. 浑：浑浊。\n3. 足：丰盛。\n4. 豚：小猪，这里指猪肉。\n诗意：不要笑话农家腊月酿的酒浑浊，丰收之年他们会用丰盛的鸡肉和猪肉来招待客人。山峦重叠水流曲折让人怀疑无路可走，但柳绿花艳间又出现了一个村庄。比喻在困境中会出现转机。'],
+          audioText:'莫笑农家腊酒浑，丰年留客足鸡豚。山重水复疑无路，柳暗花明又一村。'},
+        {id:'p4-3',title:'暮江吟',author:'白居易',dynasty:'唐',grade:'小四',content:['一道残阳铺水中，半江瑟瑟半江红。可怜九月初三夜，露似真珠月似弓。'],
+          shiyi:['1. 暮江吟：傍晚在江边吟诵的诗。\n2. 残阳：快要落山的太阳。\n3. 瑟瑟：碧绿色。\n4. 可怜：可爱。\n诗意：傍晚时分，一道残阳斜照在江面上，江水一半是碧绿色一半是红色。更可爱的是九月初三的夜晚，露珠像珍珠一样晶莹，月亮弯得像一张弓。'],
+          audioText:'一道残阳铺水中，半江瑟瑟半江红。可怜九月初三夜，露似真珠月似弓。'},
+      ]},
+      { id: 'p4u2', label: '四年级下册', items: [
+        {id:'p4-4',title:'四时田园杂兴（其二十五）',author:'范成大',dynasty:'宋',grade:'小四',content:['梅子金黄杏子肥，麦花雪白菜花稀。日长篱落无人过，惟有蜻蜓蛱蝶飞。'],
+          shiyi:['1. 四时田园杂兴：诗人一年四季田园生活的杂感。\n2. 肥：果实饱满。\n3. 日长：夏天白天变长。\n4. 篱落：篱笆。\n诗意：梅子变得金黄，杏子长得饱满，麦子扬花像雪一样白，菜花稀疏。日长天热，篱笆边无人经过，只有蜻蜓和蝴蝶在飞舞。描绘了初夏田园的宁静景象。'],
+          audioText:'梅子金黄杏子肥，麦花雪白菜花稀。日长篱落无人过，惟有蜻蜓蛱蝶飞。'},
+        {id:'p4-5',title:'清平乐·村居',author:'辛弃疾',dynasty:'宋',grade:'小四',content:['茅檐低小，溪上青青草。醉里吴音相媚好，白发谁家翁媪？大儿锄豆溪东，中儿正织鸡笼。最喜小儿亡赖，溪头卧剥莲蓬。'],
+          shiyi:['1. 吴音：吴地方言。\n2. 翁媪：老翁和老妇。\n3. 亡赖：调皮、无赖，这里指可爱。\n4. 卧剥：躺着剥。\n诗意：茅草屋的屋檐又低又小，小溪边长满了青草。带着醉意的吴地方言听起来温柔美好，白发苍苍的是哪家的老翁老妇呢？大儿子在小溪东边的豆田里锄草，二儿子正在编织鸡笼。最喜欢的是那个调皮的小儿子，正躺在溪边剥莲蓬。'],
+          audioText:'茅檐低小，溪上青青草。醉里吴音相媚好，白发谁家翁媪？大儿锄豆溪东，中儿正织鸡笼。最喜小儿亡赖，溪头卧剥莲蓬。'},
+      ]},
+      { id: 'p5u1', label: '五年级上册', items: [
+        {id:'p5-1',title:'示儿',author:'陆游',dynasty:'宋',grade:'小五',content:['死去元知万事空，但悲不见九州同。王师北定中原日，家祭无忘告乃翁。'],
+          shiyi:['1. 示儿：给儿子看的诗。\n2. 元知：本来就知道。\n3. 九州同：全国统一。\n4. 王师：朝廷的军队。\n5. 中原：指被金兵占领的北方地区。\n6. 家祭：家中祭祀先人。\n7. 乃翁：你的父亲。\n诗意：我本来就知道人死后一切都成空，只是悲伤看不到祖国统一。等到朝廷的军队收复中原的那一天，家祭时不要忘了告诉你们的父亲。表达了诗人至死不渝的爱国之情。'],
+          audioText:'死去元知万事空，但悲不见九州同。王师北定中原日，家祭无忘告乃翁。'},
+        {id:'p5-2',title:'题临安邸',author:'林升',dynasty:'宋',grade:'小五',content:['山外青山楼外楼，西湖歌舞几时休？暖风熏得游人醉，直把杭州作汴州。'],
+          shiyi:['1. 临安：今浙江杭州，南宋都城。\n2. 邸：旅店。\n3. 休：停止。\n4. 汴州：北宋都城，今河南开封。\n诗意：山外有山楼外有楼，西湖边的歌舞什么时候才能停止呢？暖洋洋的风吹得达官贵人们沉醉其中，简直把杭州当成了故都汴州。讽刺南宋统治者的苟安享乐。'],
+          audioText:'山外青山楼外楼，西湖歌舞几时休？暖风熏得游人醉，直把杭州作汴州。'},
+        {id:'p5-3',title:'己亥杂诗',author:'龚自珍',dynasty:'清',grade:'小五',content:['九州生气恃风雷，万马齐喑究可哀。我劝天公重抖擞，不拘一格降人才。'],
+          shiyi:['1. 九州：中国。\n2. 生气：蓬勃向上的气象。\n3. 恃：依靠。\n4. 万马齐喑：所有的马都沉默无声，比喻局面沉闷。\n5. 究：终究。\n6. 天公：老天爷。\n7. 抖擞：振作精神。\n诗意：中国要焕发生机需要依靠风雷的力量，万马齐喑的沉闷局面终究是可悲的。我劝老天爷重新振作精神，不拘泥于常规来降下人才。表达了作者对改革的渴望。'],
+          audioText:'九州生气恃风雷，万马齐喑究可哀。我劝天公重抖擞，不拘一格降人才。'},
+      ]},
+      { id: 'p5u2', label: '五年级下册', items: [
+        {id:'p5-4',title:'从军行',author:'王昌龄',dynasty:'唐',grade:'小五',content:['青海长云暗雪山，孤城遥望玉门关。黄沙百战穿金甲，不破楼兰终不还。'],
+          shiyi:['1. 从军行：描写军旅生活的乐府曲名。\n2. 青海：青海湖一带。\n3. 玉门关：古代西北边塞要道。\n4. 穿：磨穿。\n5. 楼兰：代指入侵的敌人。\n诗意：青海湖上空密布着乌云，遮暗了远处的雪山，孤城与玉门关遥遥相望。在黄沙弥漫的战场上，经历了上百次战斗，铠甲都磨穿了，但只要不能打败敌人就绝不返回。表达了边塞将士英勇报国的决心。'],
+          audioText:'青海长云暗雪山，孤城遥望玉门关。黄沙百战穿金甲，不破楼兰终不还。'},
+        {id:'p5-5',title:'秋夜将晓出篱门迎凉有感',author:'陆游',dynasty:'宋',grade:'小五',content:['三万里河东入海，五千仞岳上摩天。遗民泪尽胡尘里，南望王师又一年。'],
+          shiyi:['1. 将晓：天快要亮的时候。\n2. 三万里河：指黄河。\n3. 五千仞岳：指华山。仞，古代长度单位。\n4. 遗民：被金兵占领地区的汉族百姓。\n5. 胡尘：金兵战马扬起的尘土。\n6. 王师：南宋的军队。\n诗意：三万里长的黄河流入大海，五千仞高的华山直插云天。被金兵占领区的百姓在敌人的压榨下泪水已流尽，盼望南宋军队收复失地又盼了一年。表达了诗人对沦陷区人民的同情和爱国之情。'],
+          audioText:'三万里河东入海，五千仞岳上摩天。遗民泪尽胡尘里，南望王师又一年。'},
+        {id:'p5-6',title:'凉州词',author:'王翰',dynasty:'唐',grade:'小五',content:['葡萄美酒夜光杯，欲饮琵琶马上催。醉卧沙场君莫笑，古来征战几人回。'],
+          shiyi:['1. 凉州词：唐代流行的一种歌词。\n2. 夜光杯：传说中夜间发光的酒杯。\n3. 催：催促出发。\n4. 沙场：战场。\n诗意：精致的夜光杯中盛着葡萄美酒，刚要举杯畅饮就传来马背上琵琶的催行声。即使醉倒在沙场上你也别笑，自古以来出征作战能有几人活着回来呢？表现了边塞将士视死如归的豪情。'],
+          audioText:'葡萄美酒夜光杯，欲饮琵琶马上催。醉卧沙场君莫笑，古来征战几人回。'},
+      ]},
+      { id: 'p6u1', label: '六年级上册', items: [
+        {id:'p6-1',title:'宿建德江',author:'孟浩然',dynasty:'唐',grade:'小六',content:['移舟泊烟渚，日暮客愁新。野旷天低树，江清月近人。'],
+          shiyi:['1. 建德江：新安江流经建德的一段。\n2. 烟渚：烟雾笼罩的小洲。\n3. 客愁：旅人的忧愁。\n4. 野旷：原野空旷。\n诗意：把小船停泊在烟雾笼罩的小洲边，夕阳西下时旅人的愁思又增添了新的内容。原野空旷，放眼望去天比树还低，江水清澈，月亮的倒影仿佛和人更近了。表达了诗人旅途中的孤寂和思乡之情。'],
+          audioText:'移舟泊烟渚，日暮客愁新。野旷天低树，江清月近人。'},
+        {id:'p6-2',title:'西江月·夜行黄沙道中',author:'辛弃疾',dynasty:'宋',grade:'小六',content:['明月别枝惊鹊，清风半夜鸣蝉。稻花香里说丰年，听取蛙声一片。七八个星天外，两三点雨山前。旧时茅店社林边，路转溪桥忽见。'],
+          shiyi:['1. 西江月：词牌名。\n2. 黄沙道：江西上饶一带的道路。\n3. 别枝：另一根树枝。\n4. 听取：听到。\n5. 茅店：简陋的旅店。\n6. 社林：土地庙周围的树林。\n诗意：明亮的月光惊起了枝头的喜鹊，清凉的夜风中传来蝉鸣。稻花香气里人们在谈论丰收年景，耳边传来一片青蛙的叫声。天边隐约闪烁着七八颗星，山前飘落两三点细雨。过去熟悉的茅店就在土地庙边的树林旁，转过溪上的小桥忽然出现在眼前。'],
+          audioText:'明月别枝惊鹊，清风半夜鸣蝉。稻花香里说丰年，听取蛙声一片。七八个星天外，两三点雨山前。旧时茅店社林边，路转溪桥忽见。'},
+        {id:'p6-3',title:'过故人庄',author:'孟浩然',dynasty:'唐',grade:'小六',content:['故人具鸡黍，邀我至田家。绿树村边合，青山郭外斜。开轩面场圃，把酒话桑麻。待到重阳日，还来就菊花。'],
+          shiyi:['1. 具：准备。\n2. 鸡黍：鸡肉和黄米饭，指农家饭菜。\n3. 郭：外城。\n4. 轩：窗户。\n5. 场圃：打谷场和菜园。\n6. 重阳日：重阳节。\n7. 就菊花：赏菊花、饮菊花酒。\n诗意：老朋友准备好了丰盛的饭菜，邀请我来到他的农家。翠绿的树木环绕着村庄，青青的山峦在城外斜立。打开窗户正对着打谷场和菜园，端起酒杯谈论着庄稼的收成。等到重阳节那天，我还要来一起赏菊花。表达了诗人对田园生活的向往和对友情的珍视。'],
+          audioText:'故人具鸡黍，邀我至田家。绿树村边合，青山郭外斜。开轩面场圃，把酒话桑麻。待到重阳日，还来就菊花。'},
+      ]},
+      { id: 'p6u2', label: '六年级下册', items: [
+        {id:'p6-4',title:'马诗',author:'李贺',dynasty:'唐',grade:'小六',content:['大漠沙如雪，燕山月似钩。何当金络脑，快走踏清秋。'],
+          shiyi:['1. 燕山：今河北境内的燕山山脉。\n2. 钩：弯月。\n3. 何当：什么时候才能。\n4. 金络脑：镶金的马笼头，象征骏马被重用。\n5. 快走：快速奔跑。\n诗意：广阔沙漠里的沙子像雪一样白，燕山上的弯月像钩子一样锋利。什么时候才能给马戴上镶金的笼头，让它在清爽的秋日里自由飞奔？表达了诗人渴望施展抱负、报效国家的壮志。'],
+          audioText:'大漠沙如雪，燕山月似钩。何当金络脑，快走踏清秋。'},
+        {id:'p6-5',title:'石灰吟',author:'于谦',dynasty:'明',grade:'小六',content:['千锤万凿出深山，烈火焚烧若等闲。粉骨碎身浑不怕，要留清白在人间。'],
+          shiyi:['1. 石灰吟：歌颂石灰的诗。吟，这里是赞颂的意思。\n2. 若等闲：好像很平常的事。\n3. 浑不怕：全不怕。\n4. 清白：指石灰的颜色，也比喻人的高尚品格。\n诗意：经过千锤万凿才从深山里开采出来，面对烈火的焚烧也觉得稀松平常。即使粉身碎骨也毫不惧怕，只想把清白的品格留在这人世间。表达了诗人不怕牺牲、坚守高洁品格的精神。'],
+          audioText:'千锤万凿出深山，烈火焚烧若等闲。粉骨碎身浑不怕，要留清白在人间。'},
+        {id:'p6-6',title:'竹石',author:'郑燮',dynasty:'清',grade:'小六',content:['咬定青山不放松，立根原在破岩中。千磨万击还坚劲，任尔东西南北风。'],
+          shiyi:['1. 咬定：比喻竹根深深扎在岩石中，像咬住一样。\n2. 立根：扎根。\n3. 破岩：岩石的缝隙。\n4. 任尔：任凭你。\n诗意：竹子紧紧咬住青山一点也不放松，根部原来是扎在岩石的缝隙中。经过千磨万击依然坚韧刚劲，任凭你从四面八方吹来的狂风。表达了诗人坚定的品格和不屈不挠的精神。'],
+          audioText:'咬定青山不放松，立根原在破岩中。千磨万击还坚劲，任尔东西南北风。'},
+      ]},
+    ]
+  },
+  middle: {
+    label: '初中',
+    units: [
+      { id: 'm7u1', label: '七年级上册', items: [
+        {id:'m7-1',title:'观沧海',author:'曹操',dynasty:'东汉',grade:'初一',content:['东临碣石，以观沧海。水何澹澹，山岛竦峙。树木丛生，百草丰茂。秋风萧瑟，洪波涌起。日月之行，若出其中；星汉灿烂，若出其里。幸甚至哉，歌以咏志。'],
+          shiyi:['1. 临：登上。\n2. 碣石：山名，在今河北昌黎。\n3. 沧海：大海。\n4. 澹澹：水波荡漾的样子。\n5. 竦峙：耸立。\n6. 星汉：银河。\n7. 幸甚至哉：好到了极点。\n诗意：登上碣石山，眺望苍茫的大海。海水荡漾，山岛耸立。树木繁茂，百草丰美。秋风吹起，海浪翻涌。日月的运行，好像出于大海之中；银河灿烂，好像出于大海之上。真是好到了极点，用这首歌来表达我的志向。这是一首借景抒情的名作，表达了诗人宽广的胸怀和建功立业的抱负。'],
+          audioText:'东临碣石，以观沧海。水何澹澹，山岛竦峙。树木丛生，百草丰茂。秋风萧瑟，洪波涌起。日月之行，若出其中；星汉灿烂，若出其里。幸甚至哉，歌以咏志。'},
+        {id:'m7-2',title:'闻王昌龄左迁龙标遥有此寄',author:'李白',dynasty:'唐',grade:'初一',content:['杨花落尽子规啼，闻道龙标过五溪。我寄愁心与明月，随君直到夜郎西。'],
+          shiyi:['1. 左迁：降职。\n2. 龙标：地名，今贵州境内。\n3. 子规：杜鹃鸟。\n4. 五溪：地名，在今湖南、贵州交界。\n5. 夜郎：地名，今贵州境内。\n诗意：杨花落尽，杜鹃鸟声声啼叫，听说你被贬到龙标去，要经过五溪。我把对你的忧愁思念寄托给明月，让它随着你一直到达夜郎以西。这首诗表达了诗人对朋友被贬的同情和深切的思念。'],
+          audioText:'杨花落尽子规啼，闻道龙标过五溪。我寄愁心与明月，随君直到夜郎西。'},
+        {id:'m7-3',title:'次北固山下',author:'王湾',dynasty:'唐',grade:'初一',content:['客路青山外，行舟绿水前。潮平两岸阔，风正一帆悬。海日生残夜，江春入旧年。乡书何处达？归雁洛阳边。'],
+          shiyi:['1. 次：停泊。\n2. 北固山：在今江苏镇江。\n3. 客路：旅客要走的路。\n4. 风正：顺风。\n5. 残夜：天将亮的时候。\n6. 旧年：一年将尽的时候。\n7. 归雁：传信的大雁。\n诗意：旅客的道路在青山的外面，船在碧绿的江水上前行。潮水涨满，两岸之间水面宽阔，顺风时有一面白帆高悬。海上的太阳在残夜中升起，江南的春天在旧年中已经来临。家书怎样才能送到呢？希望北归的大雁把它带到洛阳。这首诗情景交融，表达了诗人的思乡之情。'],
+          audioText:'客路青山外，行舟绿水前。潮平两岸阔，风正一帆悬。海日生残夜，江春入旧年。乡书何处达？归雁洛阳边。'},
+        {id:'m7-4',title:'天净沙·秋思',author:'马致远',dynasty:'元',grade:'初一',content:['枯藤老树昏鸦，小桥流水人家，古道西风瘦马。夕阳西下，断肠人在天涯。'],
+          shiyi:['1. 天净沙：曲牌名。\n2. 昏鸦：黄昏时归巢的乌鸦。\n3. 古道：古老的驿道。\n4. 断肠人：形容极度悲伤的人。\n5. 天涯：天边，指远离家乡的地方。\n诗意：枯萎的藤蔓缠绕着老树，黄昏时乌鸦归巢，小桥下流水潺潺，旁边有几户人家，古老的驿道上秋风萧瑟，一匹瘦马缓缓前行。夕阳西下，极度悲伤的游子还漂泊在天边。这首小令被誉为"秋思之祖"，用白描手法勾勒出一幅凄凉的羁旅图，表达了深沉的思乡之情。'],
+          audioText:'枯藤老树昏鸦，小桥流水人家，古道西风瘦马。夕阳西下，断肠人在天涯。'},
+      ]},
+      { id: 'm7u2', label: '七年级下册', items: [
+        {id:'m7-5',title:'木兰诗（节选）',author:'佚名',dynasty:'南北朝',grade:'初一',content:['唧唧复唧唧，木兰当户织。不闻机杼声，唯闻女叹息。问女何所思，问女何所忆。女亦无所思，女亦无所忆。昨夜见军帖，可汗大点兵，军书十二卷，卷卷有爷名。阿爷无大儿，木兰无长兄，愿为市鞍马，从此替爷征。'],
+          shiyi:['1. 唧唧：织布机的声音。\n2. 当户织：对着门织布。\n3. 机杼：织布机。\n4. 军帖：征兵的名册。\n5. 可汗：古代北方少数民族君主。\n6. 军书：征兵的名册。\n7. 市鞍马：买鞍子和马。\n诗意：吱呀吱呀又吱呀，木兰对着门在织布。听不到织布的声音，只听到姑娘在叹息。问姑娘在想什么，问姑娘在思念什么。姑娘没有想什么，姑娘也没有思念什么。昨夜看到军中的文告，可汗大规模征兵，征兵名册有十二卷，每一卷都有父亲的名字。父亲没有大儿子，木兰没有哥哥，愿意为此去买鞍马，从此替父亲去出征。这是一首著名的乐府诗，塑造了代父从军的女英雄花木兰的形象。'],
+          audioText:'唧唧复唧唧，木兰当户织。不闻机杼声，唯闻女叹息。问女何所思，问女何所忆。女亦无所思，女亦无所忆。昨夜见军帖，可汗大点兵，军书十二卷，卷卷有爷名。阿爷无大儿，木兰无长兄，愿为市鞍马，从此替爷征。'},
+        {id:'m7-6',title:'登幽州台歌',author:'陈子昂',dynasty:'唐',grade:'初一',content:['前不见古人，后不见来者。念天地之悠悠，独怆然而涕下。'],
+          shiyi:['1. 幽州台：蓟北楼，战国时燕昭王所建。\n2. 古人：指古代那些能礼贤下士的圣君。\n3. 来者：指后世重视人才的人。\n4. 悠悠：长久遥远。\n5. 怆然：悲伤的样子。\n6. 涕：眼泪。\n诗意：往前看不到古代的圣君，往后看不到后世重视人才的人。想到天地的广阔长久，独自悲伤地流下眼泪。这首诗语言奔放，表达了诗人怀才不遇、壮志难酬的悲愤和孤独感。'],
+          audioText:'前不见古人，后不见来者。念天地之悠悠，独怆然而涕下。'},
+      ]},
+      { id: 'm8u1', label: '八年级上册', items: [
+        {id:'m8-1',title:'野望',author:'王绩',dynasty:'唐',grade:'初二',content:['东皋薄暮望，徒倚欲何依。树树皆秋色，山山唯落晖。牧人驱犊返，猎马带禽归。相顾无相识，长歌怀采薇。'],
+          shiyi:['1. 东皋：地名，作者隐居的地方。\n2. 薄暮：傍晚。\n3. 徒倚：徘徊。\n4. 落晖：落日的余晖。\n5. 犊：小牛。\n6. 采薇：用采薇代指隐居生活。\n诗意：傍晚时分站在东皋眺望，内心徘徊不知该依靠谁。每一棵树都呈现出秋天的色彩，每一座山都沐浴在落日的余晖中。牧人赶着小牛回家，猎人带着猎物归来。大家互相对看却互不相识，我放声高歌怀念隐居的生活。这首诗描写了秋天山野的宁静景象，表达了诗人的孤独和归隐之意。'],
+          audioText:'东皋薄暮望，徒倚欲何依。树树皆秋色，山山唯落晖。牧人驱犊返，猎马带禽归。相顾无相识，长歌怀采薇。'},
+        {id:'m8-2',title:'黄鹤楼',author:'崔颢',dynasty:'唐',grade:'初二',content:['昔人已乘黄鹤去，此地空余黄鹤楼。黄鹤一去不复返，白云千载空悠悠。晴川历历汉阳树，芳草萋萋鹦鹉洲。日暮乡关何处是？烟波江上使人愁。'],
+          shiyi:['1. 黄鹤楼：江南名楼，在今湖北武汉。\n2. 昔人：仙人子安，曾乘黄鹤经过此处。\n3. 悠悠：飘飘荡荡。\n4. 历历：清晰分明。\n5. 鹦鹉洲：长江中的小岛。\n6. 乡关：故乡。\n诗意：过去的仙人已经乘着黄鹤飞走了，这里只剩下空荡荡的黄鹤楼。黄鹤一去再也不会回来，千百年来只有白云飘飘荡荡。阳光照耀下汉阳的树木清晰可见，鹦鹉洲上芳草繁茂。天色已晚，故乡在哪里呢？江上烟雾笼罩令人忧愁。这首诗被推崇为七律之首，情景交融，意境深远。'],
+          audioText:'昔人已乘黄鹤去，此地空余黄鹤楼。黄鹤一去不复返，白云千载空悠悠。晴川历历汉阳树，芳草萋萋鹦鹉洲。日暮乡关何处是？烟波江上使人愁。'},
+        {id:'m8-3',title:'使至塞上',author:'王维',dynasty:'唐',grade:'初二',content:['单车欲问边，属国过居延。征蓬出汉塞，归雁入胡天。大漠孤烟直，长河落日圆。萧关逢候骑，都护在燕然。'],
+          shiyi:['1. 使至塞上：出使边塞。\n2. 单车：形容轻车简从。\n3. 属国：典属国的简称，此处指使者。\n4. 居延：地名，在今甘肃。\n5. 征蓬：飘飞的蓬草，比喻漂泊的诗人。\n6. 候骑：骑马的侦察兵。\n7. 都护：边塞最高军政长官。\n8. 燕然：山名，代指边塞前线。\n诗意：轻车简从去慰问边关，路过属国居延。像飘飞的蓬草出了汉塞，像北归的大雁飞入胡地。大漠中一缕孤烟直上云天，长长的黄河映着圆圆的落日。在萧关遇到侦察的骑兵，说都护正在燕然前线。这首诗以开阔的意境描写了边塞的壮丽风光，"大漠孤烟直，长河落日圆"是千古名句。'],
+          audioText:'单车欲问边，属国过居延。征蓬出汉塞，归雁入胡天。大漠孤烟直，长河落日圆。萧关逢候骑，都护在燕然。'},
+        {id:'m8-4',title:'渡荆门送别',author:'李白',dynasty:'唐',grade:'初二',content:['渡远荆门外，来从楚国游。山随平野尽，江入大荒流。月下飞天镜，云生结海楼。仍怜故乡水，万里送行舟。'],
+          shiyi:['1. 荆门：山名，在今湖北宜都。\n2. 楚国：今湖北、湖南一带。\n3. 平野：平坦的原野。\n4. 大荒：广阔的原野。\n5. 海楼：海市蜃楼。\n6. 怜：爱。\n诗意：乘船远行渡过荆门，来到楚国故地游览。山随着平原的出现渐渐消失，江水流入广阔的原野。月亮倒映水中如同飞天的明镜，云彩升起结成海市蜃楼的奇观。我仍然喜爱这来自故乡的水，不远万里送我这艘行舟。表达了诗人离别故乡的依依不舍之情。'],
+          audioText:'渡远荆门外，来从楚国游。山随平野尽，江入大荒流。月下飞天镜，云生结海楼。仍怜故乡水，万里送行舟。'},
+      ]},
+      { id: 'm8u2', label: '八年级下册', items: [
+        {id:'m8-5',title:'茅屋为秋风所破歌',author:'杜甫',dynasty:'唐',grade:'初二',content:['八月秋高风怒号，卷我屋上三重茅。茅飞渡江洒江郊，高者挂罥长林梢，下者飘转沉塘坳。南村群童欺我老无力，忍能对面为盗贼。公然抱茅入竹去，唇焦口燥呼不得，归来倚杖自叹息。俄顷风定云墨色，秋天漠漠向昏黑。布衾多年冷似铁，娇儿恶卧踏里裂。床头屋漏无干处，雨脚如麻未断绝。自经丧乱少睡眠，长夜沾湿何由彻！安得广厦千万间，大庇天下寒士俱欢颜！风雨不动安如山。呜呼！何时眼前突兀见此屋，吾庐独破受冻死亦足！'],
+          shiyi:['1. 秋高：秋深。\n2. 三重茅：多层茅草。\n3. 挂罥：挂着缠绕。\n4. 塘坳：低洼积水的地方。\n5. 忍能：竟然这样。\n6. 俄顷：一会儿。\n7. 布衾：布被子。\n8. 丧乱：战乱，此处指安史之乱。\n9. 广厦：高大的房屋。\n10. 大庇：全部遮护。\n11. 寒士：贫寒的读书人。\n诗意：八月深秋狂风怒号，卷走了我屋顶上的好几层茅草。茅草飞过江去散落在江边，高处的挂在高高的树梢上，低处的飘转落到池塘里。南村的孩子们欺负我年老无力，竟然当着我的面把茅草抱走。我唇焦口燥也唤不住他们，回来拄着拐杖独自叹息。不一会儿风停了乌云像墨一样黑，秋天的天空阴沉沉地暗了下来。布被子盖了多年冷得像铁，孩子睡相不好把被里都蹬破了。屋顶漏水没有一处是干的，雨脚像麻一样密集不断。自从经历战乱以来我就很少睡眠，长夜漫漫屋漏床湿如何熬到天亮！怎样才能得到千万间宽大的房子，普遍地遮护天下贫寒的读书人让他们都露出笑脸！风雨中安稳如山。唉！什么时候眼前能突然出现这样的房子，即使我的茅屋破了受冻而死也心满意足！这首诗表现了诗人推己及人的博大胸怀和关心天下寒士的崇高理想。'],
+          audioText:'八月秋高风怒号，卷我屋上三重茅。茅飞渡江洒江郊，高者挂罥长林梢，下者飘转沉塘坳。'},
+        {id:'m8-6',title:'卖炭翁',author:'白居易',dynasty:'唐',grade:'初二',content:['卖炭翁，伐薪烧炭南山中。满面尘灰烟火色，两鬓苍苍十指黑。卖炭得钱何所营？身上衣裳口中食。可怜身上衣正单，心忧炭贱愿天寒。夜来城外一尺雪，晓驾炭车辗冰辙。牛困人饥日已高，市南门外泥中歇。翩翩两骑来是谁？黄衣使者白衫儿。手把文书口称敕，回车叱牛牵向北。一车炭，千余斤，宫使驱将惜不得。半匹红纱一丈绫，系向牛头充炭直。'],
+          shiyi:['1. 薪：柴。\n2. 营：谋求。\n3. 愿：希望。\n4. 辗：碾压。\n5. 翩翩：轻快的样子，这里指得意忘形。\n6. 黄衣使者：太监。\n7. 敕：皇帝的命令。\n8. 驱将：赶走。\n9. 炭直：炭的价值。\n诗意：有个卖炭的老翁，在终南山里砍柴烧炭。满脸灰尘是烟火熏出的颜色，两鬓斑白十指漆黑。卖炭得来的钱用来做什么呢？为了身上的衣服和口中的饭食。可怜他身上衣服单薄，却担心炭价便宜希望天气更冷。夜里城外来了一尺深的雪，天亮赶着炭车碾过冰冻的车辙。牛累了人也饿了太阳已经很高，在市南门外的泥地里休息。轻快骑马来的两个人是谁？穿着黄衣的太监和穿白衫的随从。手里拿着文书口称皇帝的命令，掉转车头吆喝着牛往北拉。一车炭有一千多斤，宫使赶走它毫不可惜。只用了半匹红纱一丈绫，就系在牛头上充当炭钱。这首诗揭露了宫市的罪恶，表达了诗人对劳动人民的深切同情。'],
+          audioText:'卖炭翁，伐薪烧炭南山中。满面尘灰烟火色，两鬓苍苍十指黑。卖炭得钱何所营？身上衣裳口中食。可怜身上衣正单，心忧炭贱愿天寒。'},
+      ]},
+      { id: 'm9u1', label: '九年级上册', items: [
+        {id:'m9-1',title:'行路难（其一）',author:'李白',dynasty:'唐',grade:'初三',content:['金樽清酒斗十千，玉盘珍羞直万钱。停杯投箸不能食，拔剑四顾心茫然。欲渡黄河冰塞川，将登太行雪满山。闲来垂钓碧溪上，忽复乘舟梦日边。行路难，行路难，多歧路，今安在？长风破浪会有时，直挂云帆济沧海。'],
+          shiyi:['1. 行路难：乐府旧题。\n2. 金樽：精美的酒器。\n3. 箸：筷子。\n4. 太行：太行山。\n5. 垂钓碧溪：用吕尚的典故。\n6. 乘舟梦日边：用伊尹的典故。\n7. 长风破浪：比喻宏伟的抱负。\n8. 云帆：高高的船帆。\n9. 济：渡过。\n10. 沧海：大海。\n诗意：金杯中的清酒一斗值十千钱，玉盘里的珍贵菜肴价值万钱。我放下酒杯扔掉筷子吃不下去，拔出剑来四下张望心里一片茫然。想要渡过黄河却冰封了河道，将要登上太行山却雪满山路。闲暇时在碧溪边钓鱼，忽然又梦见自己乘船到了太阳旁边。行路难啊行路难，岔路这么多，我的出路在哪里？总有一天我会乘风破浪，扬起高高的帆渡过沧海。这首诗表现了诗人在政治上遭受挫折后的苦闷和矛盾，最终以积极乐观的精神克服了困境。'],
+          audioText:'金樽清酒斗十千，玉盘珍羞直万钱。停杯投箸不能食，拔剑四顾心茫然。欲渡黄河冰塞川，将登太行雪满山。闲来垂钓碧溪上，忽复乘舟梦日边。行路难，行路难，多歧路，今安在？长风破浪会有时，直挂云帆济沧海。'},
+        {id:'m9-2',title:'酬乐天初逢席上见赠',author:'刘禹锡',dynasty:'唐',grade:'初三',content:['巴山楚水凄凉地，二十三年弃置身。怀旧空吟闻笛赋，到乡翻似烂柯人。沉舟侧畔千帆过，病树前头万木春。今日听君歌一曲，暂凭杯酒长精神。'],
+          shiyi:['1. 酬：答谢。\n2. 乐天：白居易的字。\n3. 二十三年：刘禹锡被贬在外的时间。\n4. 闻笛赋：指向秀的《思旧赋》。\n5. 烂柯人：指王质，暗示时间流逝。\n6. 沉舟、病树：诗人自比。\n7. 千帆过、万木春：比喻新事物的涌现。\n诗意：在巴山楚水这个凄凉的地方，我被弃置在这里已经二十三年了。怀念故人只能空吟《闻笛赋》，回到家乡反而像是那个烂柯人。沉船旁边有千帆驶过，病树前头有万木争春。今天听到你为我唱了一首歌，暂时凭借这杯酒来振作精神。这首诗表达了诗人历经磨难仍保持乐观进取的精神，"沉舟侧畔千帆过，病树前头万木春"是千古传诵的名句。'],
+          audioText:'巴山楚水凄凉地，二十三年弃置身。怀旧空吟闻笛赋，到乡翻似烂柯人。沉舟侧畔千帆过，病树前头万木春。今日听君歌一曲，暂凭杯酒长精神。'},
+        {id:'m9-3',title:'水调歌头·明月几时有',author:'苏轼',dynasty:'宋',grade:'初三',content:['丙辰中秋，欢饮达旦，大醉，作此篇，兼怀子由。\n明月几时有？把酒问青天。不知天上宫阙，今夕是何年。我欲乘风归去，又恐琼楼玉宇，高处不胜寒。起舞弄清影，何似在人间。转朱阁，低绮户，照无眠。不应有恨，何事长向别时圆？人有悲欢离合，月有阴晴圆缺，此事古难全。但愿人长久，千里共婵娟。'],
+          shiyi:['1. 丙辰：宋神宗熙宁九年（1076年）。\n2. 子由：苏轼的弟弟苏辙。\n3. 把酒：端起酒杯。\n4. 琼楼玉宇：形容月宫中的精美建筑。\n5. 不胜寒：承受不了寒冷。\n6. 婵娟：美好的样子，此处指月亮。\n7. 千里共婵娟：虽相隔千里，但共享同一轮明月。\n诗意：丙辰年中秋之夜，开怀畅饮直到天亮，大醉之后写了这首词，同时思念弟弟苏辙。明月从什么时候开始有的？我端起酒杯问青天。不知道天上的宫殿，今晚是哪一年。我想要乘风飞回天上去，又担心那精美的月宫太高，承受不了寒冷。在月下起舞，清影婆娑，天上哪里比得上人间呢？月光转过朱红的楼阁，低低地照进雕花的窗户，照着无法入睡的人。不应该有什么怨恨，为什么常常在人们分别时变圆呢？人有悲欢离合，月有阴晴圆缺，这种事自古以来就难以两全。只希望人们都能平安健康，即使相隔千里，也能共同欣赏这美好的月色。这首词以月为线，表达了诗人旷达的胸怀和对亲人的美好祝愿。'],
+          audioText:'明月几时有？把酒问青天。不知天上宫阙，今夕是何年。我欲乘风归去，又恐琼楼玉宇，高处不胜寒。起舞弄清影，何似在人间。转朱阁，低绮户，照无眠。不应有恨，何事长向别时圆？人有悲欢离合，月有阴晴圆缺，此事古难全。但愿人长久，千里共婵娟。'},
+      ]},
+      { id: 'm9u2', label: '九年级下册', items: [
+        {id:'m9-4',title:'渔家傲·秋思',author:'范仲淹',dynasty:'宋',grade:'初三',content:['塞下秋来风景异，衡阳雁去无留意。四面边声连角起，千嶂里，长烟落日孤城闭。浊酒一杯家万里，燕然未勒归无计。羌管悠悠霜满地，人不寐，将军白发征夫泪。'],
+          shiyi:['1. 塞下：边塞。\n2. 衡阳雁去：大雁飞向衡阳。\n3. 边声：边塞特有的声音，如马嘶、风号。\n4. 角：军中的号角。\n5. 千嶂：层叠的山峰。\n6. 长烟：升起的炊烟或烽烟。\n7. 燕然未勒：还没有在燕然山刻石记功，喻边患未平。\n8. 羌管：羌笛。\n9. 不寐：不能入睡。\n诗意：边塞的秋天风景与内地大不相同，大雁毫无留恋地向衡阳飞去。军号声中，四周的边塞之声响起，在层叠的山峰里，炊烟袅袅落日西沉，一座孤城紧闭城门。喝一杯浊酒思念万里之外的家乡，可是边患未平，功名未就，还无法计划归期。羌笛悠悠吹起，霜雪铺满大地，将士们无法入睡，将军满头白发，士兵流下思乡的泪水。这首词描写了边塞将士的艰苦生活，表达了深沉的爱国思乡之情。'],
+          audioText:'塞下秋来风景异，衡阳雁去无留意。四面边声连角起，千嶂里，长烟落日孤城闭。浊酒一杯家万里，燕然未勒归无计。羌管悠悠霜满地，人不寐，将军白发征夫泪。'},
+        {id:'m9-5',title:'江城子·密州出猎',author:'苏轼',dynasty:'宋',grade:'初三',content:['老夫聊发少年狂，左牵黄，右擎苍，锦帽貂裘，千骑卷平冈。为报倾城随太守，亲射虎，看孙郎。酒酣胸胆尚开张，鬓微霜，又何妨！持节云中，何日遣冯唐？会挽雕弓如满月，西北望，射天狼。'],
+          shiyi:['1. 老夫：苏轼自称。\n2. 聊发：暂且抒发。\n3. 黄：黄色的猎犬。\n4. 苍：苍鹰。\n5. 千骑卷平冈：形容随从很多，气势浩大。\n6. 孙郎：孙权，曾亲射虎。\n7. 云中：地名，今山西大同。\n8. 冯唐：汉代大臣，曾持节去云中赦免魏尚。\n9. 天狼：星名，此处代指西北方的敌人。\n诗意：我这老头姑且抒发一下少年人的狂放，左手牵着黄犬，右臂托着苍鹰，头戴锦帽身穿貂裘，率领千骑席卷平坦的山冈。为了报答全城的人都跟随我这个太守，亲自射虎，像当年的孙权一样。酒喝得正畅快，胸怀胆气也更加豪壮，鬓角有了几根白发，那又有什么关系！什么时候能像冯唐那样持节出使云中？到那时我一定拉开雕弓如满月，遥望西北，射下天狼星。这首词表达了词人的爱国热情和报国壮志。'],
+          audioText:'老夫聊发少年狂，左牵黄，右擎苍，锦帽貂裘，千骑卷平冈。为报倾城随太守，亲射虎，看孙郎。酒酣胸胆尚开张，鬓微霜，又何妨！持节云中，何日遣冯唐？会挽雕弓如满月，西北望，射天狼。'},
+        {id:'m9-6',title:'破阵子·为陈同甫赋壮词以寄之',author:'辛弃疾',dynasty:'宋',grade:'初三',content:['醉里挑灯看剑，梦回吹角连营。八百里分麾下炙，五十弦翻塞外声，沙场秋点兵。马作的卢飞快，弓如霹雳弦惊。了却君王天下事，赢得生前身后名。可怜白发生！'],
+          shiyi:['1. 挑灯：拨亮油灯。\n2. 梦回：梦中醒来。\n3. 八百里：指牛，此处指军营。\n4. 麾下：部下。\n5. 炙：烤肉。\n6. 五十弦：泛指多种乐器。\n7. 的卢：古代良马名。\n8. 霹雳：比喻弓弦声如雷。\n9. 天下事：指恢复中原、统一国家的大业。\n10. 可怜：可悲。\n诗意：醉酒中拨亮油灯看宝剑，梦中醒来号角声响遍军营。把烤牛肉分给部下，多种乐器奏起边塞军歌，这是秋天在战场上检阅军队。战马像的卢马一样飞快，弓箭离弦的声音如雷震响。了结君王统一天下的大事，博得生前和死后的美名。可悲的是，满头白发已经生出！这首词追忆了军旅生活，表达了词人壮志难酬的悲愤。'],
+          audioText:'醉里挑灯看剑，梦回吹角连营。八百里分麾下炙，五十弦翻塞外声，沙场秋点兵。马作的卢飞快，弓如霹雳弦惊。了却君王天下事，赢得生前身后名。可怜白发生！'},
+      ]},
+    ]
+  },
+  high: {
+    label: '高中',
+    units: [
+      { id: 'h10u1', label: '必修上册', items: [
+        {id:'h10-1',title:'静女',author:'佚名',dynasty:'先秦',grade:'高一',content:['静女其姝，俟我于城隅。爱而不见，搔首踟蹰。静女其娈，贻我彤管。彤管有炜，说怿女美。自牧归荑，洵美且异。匪女之为美，美人之贻。'],
+          shiyi:['1. 静女：文静美好的女子。\n2. 姝：美丽。\n3. 俟：等待。\n4. 城隅：城墙的角落。\n5. 爱：隐藏。\n6. 踟蹰：徘徊不定。\n7. 彤管：红色的管状植物，一说指乐器。\n8. 炜：光亮有光。\n9. 说怿：喜爱。\n10. 牧：郊外。\n11. 归：赠送。\n12. 荑：白茅的嫩芽。\n13. 洵美：确实很美。\n诗意：文静姑娘真美丽，约我等在城角旁。故意躲藏不出现，挠头徘徊心慌张。文静姑娘真漂亮，赠送我一根红管。红管光灿灿，我喜爱它的鲜艳。从郊外采来白茅送给我，确实美丽又特别。不是白茅有多美，是因为美人的赠送。这是一首描写青年男女约会的情诗，充满了浓厚的生活气息。'],
+          audioText:'静女其姝，俟我于城隅。爱而不见，搔首踟蹰。静女其娈，贻我彤管。彤管有炜，说怿女美。自牧归荑，洵美且异。匪女之为美，美人之贻。'},
+        {id:'h10-2',title:'涉江采芙蓉',author:'佚名',dynasty:'汉',grade:'高一',content:['涉江采芙蓉，兰泽多芳草。采之欲遗谁？所思在远道。还顾望旧乡，长路漫浩浩。同心而离居，忧伤以终老。'],
+          shiyi:['1. 芙蓉：荷花。\n2. 兰泽：长着兰草的洼地。\n3. 遗：赠送。\n4. 所思：所思念的人。\n5. 远道：遥远的地方。\n6. 还顾：回头看。\n7. 旧乡：故乡。\n8. 漫浩浩：形容路途无边无际。\n9. 同心而离居：两心相爱却不能在一起。\n诗意：渡过江水去采荷花，兰草洼里有很多香草。采了荷花想送给谁呢？所思念的人在遥远的地方。回头望一眼故乡，路途遥远无边无际。两心相爱却分隔两地，只能怀着忧伤一起到老。这首诗描写了游子思妇的离别相思之情。'],
+          audioText:'涉江采芙蓉，兰泽多芳草。采之欲遗谁？所思在远道。还顾望旧乡，长路漫浩浩。同心而离居，忧伤以终老。'},
+        {id:'h10-3',title:'虞美人',author:'李煜',dynasty:'南唐',grade:'高一',content:['春花秋月何时了？往事知多少。小楼昨夜又东风，故国不堪回首月明中。雕栏玉砌应犹在，只是朱颜改。问君能有几多愁？恰似一江春水向东流。'],
+          shiyi:['1. 虞美人：词牌名。\n2. 了：完结。\n3. 故国：指南唐。\n4. 雕栏玉砌：雕花的栏杆和白玉的台阶，指宫殿。\n5. 朱颜：红润的脸色，指宫女的容颜。\n6. 一江春水向东流：比喻愁绪像春水一样无穷无尽。\n诗意：春花秋月什么时候才能完结？过去的事情还有多少？小楼昨夜又吹来了春风，在月光下不忍回首故国。精雕的栏杆白玉的台阶应该还在，只是宫女的容颜已经改变。问你能有好多愁呢？正像那满江的春水一直向东流去。这首词是李煜的绝命词，以自然永恒与人生无常的对比，抒发了深沉的亡国之痛。'],
+          audioText:'春花秋月何时了？往事知多少。小楼昨夜又东风，故国不堪回首月明中。雕栏玉砌应犹在，只是朱颜改。问君能有几多愁？恰似一江春水向东流。'},
+        {id:'h10-4',title:'登高',author:'杜甫',dynasty:'唐',grade:'高一',content:['风急天高猿啸哀，渚清沙白鸟飞回。无边落木萧萧下，不尽长江滚滚来。万里悲秋常作客，百年多病独登台。艰难苦恨繁霜鬓，潦倒新停浊酒杯。'],
+          shiyi:['1. 渚：水中小洲。\n2. 落木：落叶。\n3. 萧萧：风吹落叶的声音。\n4. 万里：远离故乡。\n5. 悲秋：悲叹秋天的萧瑟。\n6. 百年：一生。\n7. 苦恨：极恨。\n8. 繁霜鬓：鬓发像霜一样白。\n9. 潦倒：衰颓、失意。\n诗意：风很急，天很高，猿猴的叫声凄厉悲哀，水中小洲清浅沙地雪白，鸟儿在盘旋。无边无际的落叶纷纷飘下，望不到尽头的长江水滚滚而来。离家万里悲叹秋天的萧瑟，一生多病独自登上高台。时局艰难，极恨两鬓如霜，衰颓失意中刚刚放下这杯浊酒。这首诗被誉为"古今七律第一"，情景交融，表达了诗人忧国伤时的深沉感情。'],
+          audioText:'风急天高猿啸哀，渚清沙白鸟飞回。无边落木萧萧下，不尽长江滚滚来。万里悲秋常作客，百年多病独登台。艰难苦恨繁霜鬓，潦倒新停浊酒杯。'},
+      ]},
+      { id: 'h10u2', label: '必修下册', items: [
+        {id:'h10-5',title:'子衿',author:'佚名',dynasty:'先秦',grade:'高一',content:['青青子衿，悠悠我心。纵我不往，子宁不嗣音？青青子佩，悠悠我思。纵我不往，子宁不来？挑兮达兮，在城阙兮。一日不见，如三月兮。'],
+          shiyi:['1. 子衿：你的衣领。\n2. 悠悠：长久、不断。\n3. 宁：难道。\n4. 嗣音：继续寄音信。\n5. 子佩：你的佩玉。\n6. 挑兮达兮：往来走动的样子。\n7. 城阙：城门两边的高台。\n8. 一日不见，如三月兮：一天不见面，就像过了三个月。\n诗意：你的衣领青青青，常挂在我心中。纵然我没有去找你，你难道就不能继续给我音信吗？你的佩玉青青青，常在我心中思念。纵然我没有去找你，你难道就不能自己来吗？我在城门两边的高台上走来走去。一天不见面，就好像过了三个月那么久。这是一首描写女子等待恋人的诗，表达了对恋人的深切思念。'],
+          audioText:'青青子衿，悠悠我心。纵我不往，子宁不嗣音？青青子佩，悠悠我思。纵我不往，子宁不来？挑兮达兮，在城阙兮。一日不见，如三月兮。'},
+        {id:'h10-6',title:'短歌行',author:'曹操',dynasty:'东汉',grade:'高一',content:['对酒当歌，人生几何！譬如朝露，去日苦多。慨当以慷，忧思难忘。何以解忧？唯有杜康。青青子衿，悠悠我心。但为君故，沉吟至今。呦呦鹿鸣，食野之苹。我有嘉宾，鼓瑟吹笙。明明如月，何时可掇？忧从中来，不可断绝。越陌度阡，枉用相存。契阔谈讌，心念旧恩。月明星稀，乌鹊南飞。绕树三匝，何枝可依？山不厌高，海不厌深。周公吐哺，天下归心。'],
+          shiyi:['1. 几何：多少。\n2. 朝露：早晨的露水，比喻人生短暂。\n3. 去日：过去了的日子。\n4. 杜康：相传最早造酒的人，这里指酒。\n5. 青青子衿：出自《诗经》，指学子。\n6. 沉吟：低声吟咏。\n7. 呦呦：鹿叫声。\n8. 嘉宾：贵客。\n9. 掇：拾取。\n10. 枉用相存：屈尊前来问候。\n11. 契阔：聚散，这里指久别重逢。\n12. 匝：圈。\n13. 吐哺：吐出嘴里含着的食物。\n14. 天下归心：天下人心都归向于他。\n诗意：面对着美酒应当高歌，人生能有多少岁月！就像早晨的露水一样，过去的时日已经太多了。感慨激昂之际，忧思难以忘记。靠什么来解除忧愁？只有美酒了。那青色衣领的学子啊，我心中日夜思念。只是因为你的缘故，我低声吟咏直到今天。鹿儿呦呦叫着，在原野上吃着艾蒿。我有尊贵的客人，要奏瑟吹笙来款待。明亮亮的月亮，什么时候能摘取呢？忧愁从心中涌来，无法断绝。穿过纵横交错的小路，你屈尊前来问候。久别重逢设宴谈心，心中怀念旧日的情谊。月亮明亮星星稀少，乌鸦喜鹊向南方飞去。绕着树飞了三圈，哪个枝头可以依靠？山不嫌高，海不嫌深。我要像周公一样礼贤下士，使天下人心归附。这是一首表白求贤若渴、渴望建功立业的诗，风格慷慨悲凉。'],
+          audioText:'对酒当歌，人生几何！譬如朝露，去日苦多。慨当以慷，忧思难忘。何以解忧？唯有杜康。青青子衿，悠悠我心。但为君故，沉吟至今。呦呦鹿鸣，食野之苹。我有嘉宾，鼓瑟吹笙。'},
+      ]},
+      { id: 'h11u1', label: '选择性必修上册', items: [
+        {id:'h11-1',title:'无衣',author:'佚名',dynasty:'先秦',grade:'高二',content:['岂曰无衣？与子同袍。王于兴师，修我戈矛，与子同仇。岂曰无衣？与子同泽。王于兴师，修我矛戟，与子偕作。岂曰无衣？与子同裳。王于兴师，修我甲兵，与子偕行。'],
+          shiyi:['1. 无衣：没有衣服。\n2. 袍：披在外面的长衣。\n3. 王于兴师：君王要起兵。\n4. 戈矛：古代兵器。\n5. 同仇：共同对敌。\n6. 泽：贴身的内衣。\n7. 矛戟：古代兵器。\n8. 偕作：一起行动。\n9. 裳：下衣。\n10. 甲兵：铠甲和兵器。\n11. 偕行：一起走。\n诗意：谁说没有衣服？我和你同穿一件袍子。君王要起兵了，修好我的戈矛，和你共同对敌。谁说没有衣服？我和你同穿一件内衣。君王要起兵了，修好我的矛戟，和你一起行动。谁说没有衣服？我和你同穿一件下衣。君王要起兵了，修好我的铠甲和兵器，和你一起出发。这是一首战歌，表达了秦地人民团结友爱、同仇敌忾、共赴国难的英雄气概。'],
+          audioText:'岂曰无衣？与子同袍。王于兴师，修我戈矛，与子同仇。岂曰无衣？与子同泽。王于兴师，修我矛戟，与子偕作。岂曰无衣？与子同裳。王于兴师，修我甲兵，与子偕行。'},
+        {id:'h11-2',title:'春江花月夜',author:'张若虚',dynasty:'唐',grade:'高二',content:['春江潮水连海平，海上明月共潮生。滟滟随波千万里，何处春江无月明！江流宛转绕芳甸，月照花林皆似霰。空里流霜不觉飞，汀上白沙看不见。江天一色无纤尘，皎皎空中孤月轮。江畔何人初见月？江月何年初照人？人生代代无穷已，江月年年望相似。不知江月待何人，但见长江送流水。白云一片去悠悠，青枫浦上不胜愁。谁家今夜扁舟子？何处相思明月楼？可怜楼上月徘徊，应照离人妆镜台。玉户帘中卷不去，捣衣砧上拂还来。此时相望不相闻，愿逐月华流照君。鸿雁长飞光不度，鱼龙潜跃水成文。昨夜闲潭梦落花，可怜春半不还家。江水流春去欲尽，江潭落月复西斜。斜月沉沉藏海雾，碣石潇湘无限路。不知乘月几人归，落月摇情满江树。'],
+          shiyi:['1. 春江花月夜：乐府旧题。\n2. 滟滟：波光闪烁的样子。\n3. 芳甸：长满花草的原野。\n4. 霰：雪珠。\n5. 流霜：流动的月光。\n6. 孤月轮：孤独的一轮明月。\n7. 无穷已：没有穷尽。\n8. 青枫浦：地名，泛指遥远的地方。\n9. 扁舟子：飘荡江湖的人。\n10. 离人：思妇。\n11. 月华：月光。\n12. 文：波纹。\n13. 碣石：山名。\n14. 潇湘：湖南的潇水和湘水。\n诗意：春天的江潮水高涨与海面平齐，海上的明月随着海潮一同升起。月光照耀着千万里的波光，哪里的春江没有明亮的月光呢！江水流淌绕过芳草萋萋的原野，月光照在花林上像雪珠一样晶莹。空中流动的月光像飞霜一样让人不觉察，洲上的白沙与月光融成一片看不出。江水与天空同一颜色没有一点尘埃，皎洁的天空中只有一轮孤月。江边是谁第一个看见月亮？江上的月亮第一年照到了谁？人生一代一代没有穷尽，江上的月亮年年望去都相似。不知江月等待着什么人，只见长江送走了流水。白云一片悠悠飘去，青枫浦上的人有说不尽的忧愁。今晚哪家的游子坐在小船上？何处有人在明月照耀的楼上相思？可爱的是月光在楼上徘徊，应该照在那离人的梳妆台上。月光照进华美的门帘卷不走，照在捣衣石上拂了又来。此时我们共望一轮明月却听不到声音，我愿意追逐着月光去照耀你。鸿雁在高空飞也飞不出月光，鱼龙在水中潜跃也只能激起波纹。昨夜梦见花瓣落在幽静的水潭，可惜春天过了一半还不能回家。江水带着春光快要流尽，江潭上的落月又向西斜去。斜月深深藏在海雾之中，碣石到潇湘的道路无限遥远。不知有几人能趁着月光回家，只有落月的余晖摇动着满江的树影。这首诗被誉为"孤篇盖全唐"，以月为主体，以江为场景，描绘了一幅幽美邈远、惆怅惘然的春江月夜图，哲理深邃、情感浓郁。'],
+          audioText:'春江潮水连海平，海上明月共潮生。滟滟随波千万里，何处春江无月明！江流宛转绕芳甸，月照花林皆似霰。空里流霜不觉飞，汀上白沙看不见。江天一色无纤尘，皎皎空中孤月轮。'},
+      ]},
+      { id: 'h11u2', label: '选择性必修中册', items: [
+        {id:'h11-3',title:'离骚（节选）',author:'屈原',dynasty:'战国',grade:'高二',content:['帝高阳之苗裔兮，朕皇考曰伯庸。摄提贞于孟陬兮，惟庚寅吾以降。皇览揆余初度兮，肇锡余以嘉名：名余曰正则兮，字余曰灵均。纷吾既有此内美兮，又重之以修能。扈江离与辟芷兮，纫秋兰以为佩。汩余若将不及兮，恐年岁之不吾与。'],
+          shiyi:['1. 高阳：颛顼帝的号。\n2. 苗裔：后代。\n3. 皇考：对已故父亲的美称。\n4. 摄提：寅年的别称。\n5. 孟陬：正月。\n6. 庚寅：屈原的生日。\n7. 正则：公正的法则，屈原名平的字。\n8. 灵均：美好的平地，屈原字原的字。\n9. 内美：内在的美好品质。\n10. 修能：美好的才能。\n11. 扈：披。\n12. 江离、辟芷：香草名。\n13. 纫秋兰以为佩：用秋天的兰花连接起来作为佩带。\n14. 汩：水流很快的样子，此处形容时光飞逝。\n诗意：我是古帝高阳氏的后代，我的父亲字伯庸。寅年正月庚寅日我降生。父亲观察揣度我的生辰，开始赐给我美好的名字：给我取名叫正则，给我取字叫灵均。我已经有很多内在的美好品质，又加上美好的才能。披着江离和幽芷，纫结秋兰作为佩带。时光飞逝我好像跟不上，担忧年岁不等待我。这首长诗表现了屈原的高尚人格和爱国情怀，是中国古代最长的抒情诗。'],
+          audioText:'帝高阳之苗裔兮，朕皇考曰伯庸。摄提贞于孟陬兮，惟庚寅吾以降。皇览揆余初度兮，肇锡余以嘉名：名余曰正则兮，字余曰灵均。纷吾既有此内美兮，又重之以修能。'},
+        {id:'h11-4',title:'蜀道难',author:'李白',dynasty:'唐',grade:'高二',content:['噫吁嚱，危乎高哉！蜀道之难，难于上青天！蚕丛及鱼凫，开国何茫然！尔来四万八千岁，不与秦塞通人烟。西当太白有鸟道，可以横绝峨眉巅。地崩山摧壮士死，然后天梯石栈相钩连。上有六龙回日之高标，下有冲波逆折之回川。黄鹤之飞尚不得过，猿猱欲度愁攀援。青泥何盘盘，百步九折萦岩峦。扪参历井仰胁息，以手抚膺坐长叹。'],
+          shiyi:['1. 噫吁嚱：惊叹声。\n2. 蚕丛、鱼凫：传说中的古蜀国国王。\n3. 四万八千岁：极言时间久远。\n4. 太白：山名，在陕西。\n5. 鸟道：只有鸟能飞过的路。\n6. 地崩山摧：传说中蜀道开通的神话故事。\n7. 六龙回日：太阳神的六龙车驾也要回头。\n8. 高标：最高的标志，指山峰。\n9. 青泥：山岭名。\n10. 扪参历井：手摸星辰，头顶参宿和井宿。\n11. 胁息：屏住呼吸。\n12. 抚膺：拍着胸口。\n诗意：哎呀，多么高多么险啊！蜀道难走，比上青天还难！蚕丛和鱼凫建立蜀国，开创时是多么渺茫！从那以来四万八千年，不与秦地的人烟相通。西边太白山有一条鸟道，可以横越峨眉山顶。地崩山裂壮士死了，然后天梯石栈才互相钩连。山上有太阳神的六龙车也要回头的标志，下有波涛翻滚的回旋河流。连黄鹤也飞不过去，猿猴想越过也为攀援发愁。青泥岭多么曲折盘绕，百步之内有九个弯。山高得可以摸到参星和井星，仰头屏住呼吸，用手拍着胸口坐下长叹。这首诗以惊人的想象力，极力描写蜀道的艰难险阻，表现了诗人对祖国大好河山的热爱，也寄寓了对人生道路艰难险阻的感慨。'],
+          audioText:'噫吁嚱，危乎高哉！蜀道之难，难于上青天！蚕丛及鱼凫，开国何茫然！尔来四万八千岁，不与秦塞通人烟。西当太白有鸟道，可以横绝峨眉巅。地崩山摧壮士死，然后天梯石栈相钩连。'},
+      ]},
+    ]
+  }
+};
+
+// ===== PINYIN DICT =====
+const PUNYIN = {
+'咏':'yǒng','鹅':'é','江':'jiāng','南':'nán','可':'kě','采':'cǎi','莲':'lián','叶':'yè','何':'hé','田':'tián','鱼':'yú','戏':'xì','间':'jiān','东':'dōng','西':'xī','南':'nán','北':'běi','画':'huà','远':'yuǎn','看':'kàn','山':'shān','色':'sè','近':'jìn','听':'tīng','水':'shuǐ','无':'wú','声':'shēng','春':'chūn','去':'qù','花':'huā','还':'hái','人':'rén','来':'lái','鸟':'niǎo','惊':'jīng','静':'jìng','夜':'yè','思':'sī','床':'chuáng','前':'qián','明':'míng','月':'yuè','光':'guāng','疑':'yí','是':'shì','地':'dì','上':'shàng','霜':'shuāng','举':'jǔ','头':'tóu','望':'wàng','明':'míng','低':'dī','故':'gù','乡':'xiāng','晓':'xiǎo','眠':'mián','不':'bù','觉':'jué','处':'chù','闻':'wén','啼':'tí','夜':'yè','来':'lái','风':'fēng','雨':'yǔ','落':'luò','知':'zhī','少':'shǎo','赠':'zèng','汪':'Wāng','伦':'lún','李':'lǐ','白':'bái','乘':'chéng','舟':'zhōu','将':'jiāng','欲':'yù','行':'xíng','忽':'hū','岸':'àn','踏':'tà','歌':'gē','桃':'táo','潭':'tán','深':'shēn','千':'qiān','尺':'chǐ','及':'jí','送':'sòng','情':'qíng','登':'dēng','鹳':'guàn','雀':'què','楼':'lóu','白':'bái','日':'rì','依':'yī','尽':'jìn','河':'hé','入':'rù','流':'liú','穷':'qióng','里':'lǐ','更':'gèng','层':'céng','庐':'lú','瀑':'pù','布':'bù','香':'xiāng','炉':'lú','生':'shēng','紫':'zǐ','烟':'yān','遥':'yáo','挂':'guà','川':'chuān','飞':'fēi','直':'zhí','银':'yín','河':'hé','九':'jiǔ','雪':'xuě','绝':'jué','万':'wàn','径':'jìng','踪':'zōng','孤':'gū','蓑':'suō','笠':'lì','翁':'wēng','钓':'diào','寒':'hán','柳':'liǔ','碧':'bì','玉':'yù','妆':'zhuāng','成':'chéng','树':'shù','垂':'chuí','丝':'sī','绦':'tāo','谁':'shuí','裁':'cái','二':'èr','刀':'dāo','剪':'jiǎn','村':'cūn','居':'jū','草':'cǎo','长':'zhǎng','莺':'yīng','飞':'fēi','月':'yuè','拂':'fú','堤':'dī','杨':'yáng','醉':'zuì','童':'tóng','散':'sàn','学':'xué','归':'guī','早':'zǎo','趁':'chèn','东':'dōng','纸':'zhǐ','鸢':'yuān','行':'xíng','寒':'hán','斜':'xié','白':'bái','云':'yún','处':'chù','家':'jiā','停':'tíng','车':'chē','坐':'zuò','爱':'ài','枫':'fēng','林':'lín','晚':'wǎn','霜':'shuāng','红':'hóng','于':'yú','秋':'qiū','景':'jǐng','文':'wén','荷':'hé','尽':'jìn','擎':'qíng','盖':'gài','菊':'jú','残':'cán','犹':'yóu','傲':'ào','年':'nián','君':'jūn','须':'xū','橘':'jú','绿':'lǜ','所':'suǒ','书':'shū','见':'jiàn','萧':'xiāo','梧':'wú','送':'sòng','客':'kè','挑':'tiāo','促':'cù','织':'zhī','篱':'lí','落':'luò','灯':'dēng','黄':'huáng','鹂':'lí','翠':'cuì','鸣':'míng','白':'bái','鹭':'lù','天':'tiān','窗':'chuāng','含':'hán','岭':'lǐng','泊':'bó','吴':'wú','清':'qīng','明':'míng','时':'shí','纷':'fēn','路':'lù','断':'duàn','魂':'hún','借':'jiè','问':'wèn','酒':'jiǔ','牧':'mù','童':'tóng','惠':'huì','崇':'chóng','晚':'wǎn','外':'wài','三':'sān','两':'liǎng','枝':'zhī','暖':'nuǎn','鸭':'yā','先':'xiān','蒌':'lóu','蒿':'hāo','满':'mǎn','芽':'yá','河':'hé','豚':'tún','欲':'yù','题':'tí','西':'xī','林':'lín','壁':'bì','横':'héng','岭':'lǐng','峰':'fēng','远':'yuǎn','高低':'gāodī','各':'gè','同':'tóng','识':'shí','庐':'lú','真':'zhēn','面':'miàn','目':'mù','缘':'yuán','此':'cǐ','游':'yóu','西':'xī','村':'cūn','莫':'mò','笑':'xiào','农':'nóng','腊':'là','浑':'hún','丰':'fēng','留':'liú','足':'zú','鸡':'jī','重':'zhòng','复':'fù','疑':'yí','暗':'àn','暮':'mù','吟':'yín','残':'cán','铺':'pū','半':'bàn','瑟':'sè','怜':'lián','九':'jiǔ','初':'chū','露':'lù','珍':'zhēn','弓':'gōng','杂':'zá','兴':'xìng','梅':'méi','肥':'féi','麦':'mài','稀':'xī','长':'cháng','无':'wú','蜻':'qīng','蛱':'jiá','蝶':'dié','清':'qīng','平':'píng','乐':'yuè','檐':'yán','低':'dī','溪':'xī','青':'qīng','媚':'mèi','媪':'ǎo','锄':'chú','豆':'dòu','织':'zhī','笼':'lóng','最':'zuì','亡':'wú','赖':'lài','卧':'wò','剥':'bāo','莲':'lián','蓬':'péng','示':'shì','儿':'ér','死':'sǐ','元':'yuán','万':'wàn','悲':'bēi','见':'jiàn','州':'zhōu','同':'tóng','王':'wáng','师':'shī','北':'běi','定':'dìng','原':'yuán','祭':'jì','忘':'wàng','乃':'nǎi','临':'lín','安':'ān','邸':'dǐ','暖':'nuǎn','熏':'xūn','游':'yóu','汴':'biàn','己':'jǐ','亥':'hài','龚':'gōng','自':'zì','珍':'zhēn','恃':'shì','雷':'léi','马':'mǎ','喑':'yīn','哀':'āi','劝':'quàn','公':'gōng','抖':'dǒu','擞':'sǒu','拘':'jū','格':'gé','军':'jūn','城':'chéng','玉':'yù','穿':'chuān','甲':'jiǎ','破':'pò','还':'huán','将':'jiāng','晓':'xiǎo','篱':'lí','门':'mén','迎':'yíng','仞':'rèn','岳':'yuè','摩':'mó','遗':'yí','尘':'chén','望':'wàng','凉':'liáng','葡':'pú','萄':'táo','杯':'bēi','夜':'yè','光':'guāng','杯':'bēi','饮':'yǐn','琵':'pí','琶':'pá','马':'mǎ','催':'cuī','卧':'wò','沙':'shā','场':'chǎng','古':'gǔ','征':'zhēng','宿':'sù','德':'dé','移':'yí','烟':'yān','渚':'zhǔ','旷':'kuàng','月':'yuè','西':'xī','江':'jiāng','沙':'shā','道':'dào','别':'bié','鹊':'què','清':'qīng','半':'bàn','蝉':'chán','稻':'dào','香':'xiāng','丰':'fēng','听取':'tīngqǔ','星':'xīng','雨':'yǔ','旧':'jiù','忽':'hū','过':'guò','具':'jù','黍':'shǔ','邀':'yāo','至':'zhì','郭':'guō','轩':'xuān','场':'chǎng','圃':'pǔ','把':'bǎ','酒':'jiǔ','话':'huà','桑':'sāng','麻':'má','重':'chóng','阳':'yáng','菊':'jú','马':'mǎ','大':'dà','漠':'mò','燕':'yān','钩':'gōu','当':'dāng','络':'luò','脑':'nǎo','踏':'tà','吟':'yín','锤':'chuí','凿':'záo','焚':'fén','烧':'shāo','等':'děng','闲':'xián','粉':'fěn','碎':'suì','身':'shēn','怕':'pà','留':'liú','咬':'yǎo','定':'dìng','立':'lì','根':'gēn','岩':'yán','磨':'mó','击':'jī','坚':'jiān','劲':'jìng','尔':'ěr','东':'dōng','沧':'cāng','碣':'jié','观':'guān','海':'hǎi','澹':'dàn','竦':'sǒng','峙':'zhì','丛':'cóng','丰':'fēng','茂':'mào','萧':'xiāo','瑟':'sè','洪':'hóng','涌':'yǒng','日':'rì','月':'yuè','星':'xīng','汉':'hàn','欣':'xīn','至':'zhì','歌':'gē','咏':'yǒng','志':'zhì','闻':'wén','王':'wáng','标':'biāo','溪':'xī','愁':'chóu','随':'suí','郎':'láng','次':'cì','北':'běi','固':'gù','潮':'cháo','平':'píng','阔':'kuò','风':'fēng','正':'zhèng','悬':'xuán','海':'hǎi','生':'shēng','残':'cán','江':'jiāng','入':'rù','达':'dá','雁':'yàn','洛':'luò','阳':'yáng','天':'tiān','净':'jìng','沙':'shā','枯':'kū','藤':'téng','老':'lǎo','昏':'hūn','鸦':'yā','桥':'qiáo','流':'liú','古':'gǔ','瘦':'shòu','夕':'xī','阳':'yáng','断':'duàn','肠':'cháng','涯':'yá','木':'mù','兰':'lán','当':'dāng','户':'hù','机':'jī','杼':'zhù','唯':'wéi','女':'nǚ','忆':'yì','昨':'zuó','军':'jūn','帖':'tiě','汗':'hán','卷':'juàn','爷':'yé','兄':'xiōng','市':'shì','鞍':'ān','替':'tì','征':'zhēng','幽':'yōu','台':'tái','古':'gǔ','怆':'chuàng','然':'rán','涕':'tì','野':'yě','望':'wàng','东':'dōng','皋':'gāo','薄':'bó','暮':'mù','徒':'tú','倚':'yǐ','依':'yī','皆':'jiē','落':'luò','晖':'huī','驱':'qū','犊':'dú','返':'fǎn','猎':'liè','禽':'qín','顾':'gù','采':'cǎi','薇':'wēi','鹤':'hè','昔':'xī','乘':'chéng','已':'yǐ','空':'kōng','一':'yī','载':'zǎi','悠':'yōu','晴':'qíng','川':'chuān','历':'lì','萋':'qī','洲':'zhōu','暮':'mù','关':'guān','使':'shǐ','至':'zhì','单':'dān','车':'chē','问':'wèn','边':'biān','属':'shǔ','国':'guó','居':'jū','延':'yán','蓬':'péng','出':'chū','塞':'sài','孤':'gū','烟':'yān','直':'zhí','河':'hé','圆':'yuán','萧':'xiāo','候':'hòu','骑':'qí','都':'dū','护':'hù','燕':'yān','然':'rán','渡':'dù','荆':'jīng','门':'mén','别':'bié','楚':'chǔ','平':'píng','野':'yě','荒':'huāng','镜':'jìng','结':'jié','楼':'lóu','怜':'lián','万':'wàn','茅':'máo','屋':'wū','秋':'qiū','高':'gāo','号':'háo','卷':'juǎn','沉':'chén','塘':'táng','坳':'ào','群':'qún','童':'tóng','欺':'qī','忍':'rěn','盗':'dào','贼':'zéi','公':'gōng','竹':'zhú','焦':'jiāo','倚':'yǐ','杖':'zhàng','俄':'é','顷':'qǐng','墨':'mò','漠':'mò','向':'xiàng','昏':'hūn','衾':'qīn','冷':'lěng','似':'sì','铁':'tiě','娇':'jiāo','恶':'è','卧':'wò','里':'lǐ','裂':'liè','漏':'lòu','干':'gān','脚':'jiǎo','麻':'má','丧':'sàng','乱':'luàn','少':'shǎo','彻':'chè','厦':'shà','庇':'bì','寒':'hán','士':'shì','欢':'huān','颜':'yán','安':'ān','冻':'dòng','卖':'mài','炭':'tàn','翁':'wō','伐':'fá','薪':'xīn','烧':'shāo','南':'nán','面':'miàn','灰':'huī','火':'huǒ','两':'liǎng','鬓':'bìn','苍':'cāng','十':'shí','指':'zhǐ','营':'yíng','单':'dān','怜':'lián','炭':'tàn','贱':'jiàn','雪':'xuě','晓':'xiǎo','辗':'niǎn','冰':'bīng','辙':'zhé','饿':'è','歇':'xiē','翩':'piān','骑':'qí','黄':'huáng','衣':'yī','使':'shǐ','者':'zhě','衫':'shān','儿':'ér','把':'bǎ','文':'wén','书':'shū','称':'chēng','敕':'chì','叱':'chì','牵':'qiān','向':'xiàng','驱':'qū','将':'jiāng','半':'bàn','匹':'pǐ','纱':'shā','系':'xì','充':'chōng','直':'zhí','难':'nán','樽':'zūn','珍':'zhēn','羞':'xiū','投':'tóu','箸':'zhù','拔':'bá','剑':'jiàn','茫':'máng','渡':'dù','冰':'bīng','塞':'sè','川':'chuān','太':'tài','行':'xíng','钓':'diào','碧':'bì','溪':'xī','复':'fù','舟':'zhōu','梦':'mèng','歧':'qí','安':'ān','在':'zài','长':'cháng','帆':'fān','济':'jì','沧':'cāng','酬':'chóu','乐':'lè','初':'chū','逢':'féng','席':'xí','巴':'bā','凄':'qī','凉':'liáng','弃':'qì','置':'zhì','身':'shēn','怀':'huái','旧':'jiù','笛':'dí','柯':'kē','侧':'cè','畔':'pàn','病':'bìng','木':'mù','听':'tīng','歌':'gē','凭':'píng','酒':'jiǔ','长':'zhǎng','精':'jīng','神':'shén','调':'diào','明':'míng','几':'jǐ','把':'bǎ','青':'qīng','宫':'gōng','阙':'quē','夕':'xī','乘':'chéng','风':'fēng','琼':'qióng','宇':'yǔ','胜':'shèng','寒':'hán','起':'qǐ','弄':'nòng','清':'qīng','似':'sì','转':'zhuǎn','朱':'zhū','阁':'gé','绮':'qǐ','户':'hù','照':'zhào','无':'wú','恨':'hèn','何':'hé','事':'shì','别':'bié','圆':'yuán','悲':'bēi','欢':'huān','离':'lí','合':'hé','阴':'yīn','晴':'qíng','缺':'quē','全':'quán','愿':'yuàn','千':'qiān','婵':'chán','娟':'juān','渔':'yú','家':'jiā','傲':'ào','衡':'héng','雁':'yàn','连':'lián','角':'jiǎo','嶂':'zhàng','烟':'yān','勒':'lè','计':'jì','羌':'qiāng','管':'guǎn','悠':'yōu','霜':'shuāng','寐':'mèi','将':'jiāng','军':'jūn','发':'fā','征':'zhēng','夫':'fū','泪':'lèi','密':'mì','州':'zhōu','猎':'liè','聊':'liáo','狂':'kuáng','左':'zuǒ','牵':'qiān','右':'yòu','擎':'qíng','苍':'cāng','锦':'jǐn','帽':'mào','貂':'diāo','裘':'qiú','千':'qiān','骑':'qí','卷':'juǎn','冈':'gāng','报':'bào','倾':'qīng','城':'chéng','随':'suí','射':'shè','虎':'hǔ','孙':'sūn','郎':'láng','酣':'hān','胸':'xiōng','胆':'dǎn','开':'kāi','张':'zhāng','鬓':'bìn','微':'wēi','霜':'shuāng','妨':'fáng','节':'jié','遣':'qiǎn','挽':'wǎn','雕':'diāo','弓':'gōng','望':'wàng','射':'shè','狼':'láng','陈':'chén','甫':'fǔ','赋':'fù','壮':'zhuàng','词':'cí','挑':'tiāo','灯':'dēng','看':'kàn','梦':'mèng','回':'huí','角':'jiǎo','营':'yíng','八':'bā','百':'bǎi','里':'lǐ','分':'fēn','麾':'huī','炙':'zhì','翻':'fān','沙':'shā','场':'chǎng','点':'diǎn','兵':'bīng','的':'de','卢':'lú','飞':'fēi','霹':'pī','雳':'lì','惊':'jīng','却':'què','君':'jūn','事':'shì','赢':'yíng','生':'shēng','后':'hòu','名':'míng','怜':'lián','白':'bái','发':'fā','静':'jìng','女':'nǚ','姝':'shū','俟':'sì','隅':'yú','爱':'ài','见':'jiàn','搔':'sāo','首':'shǒu','踟':'chí','蹰':'chú','娈':'luán','贻':'yí','彤':'tóng','管':'guǎn','炜':'wěi','说':'yuè','怿':'yì','牧':'mù','归':'guī','荑':'tí','洵':'xún','美':'měi','异':'yì','匪':'fěi','芙':'fú','蓉':'róng','兰':'lán','泽':'zé','芳':'fāng','草':'cǎo','之':'zhī','所':'suǒ','思':'sī','道':'dào','还':'huán','顾':'gù','旧':'jiù','乡':'xiāng','漫':'màn','浩':'hào','心':'xīn','离':'lí','居':'jū','忧':'yōu','伤':'shāng','终':'zhōng','老':'lǎo','虞':'yú','美':'měi','人':'rén','春':'chūn','花':'huā','月':'yuè','了':'liǎo','往':'wǎng','事':'shì','少':'shǎo','楼':'lóu','东':'dōng','故':'gù','国':'guó','堪':'kān','首':'shǒu','雕':'diāo','栏':'lán','玉':'yù','砌':'qì','犹':'yóu','颜':'yán','改':'gǎi','恰':'qià','似':'sì','东':'dōng','流':'liú','登':'dēng','高':'gāo','急':'jí','天':'tiān','啸':'xiào','哀':'āi','渚':'zhǔ','沙':'shā','回':'huí','落':'luò','木':'mù','萧':'xiāo','下':'xià','尽':'jìn','长':'cháng','悲':'bēi','作':'zuò','客':'kè','百':'bǎi','年':'nián','多':'duō','病':'bìng','台':'tái','艰':'jiān','难':'nán','苦':'kǔ','恨':'hèn','繁':'fán','潦':'liáo','倒':'dǎo','新':'xīn','停':'tíng','浊':'zhuó','子':'zǐ','衿':'jīn','悠':'yōu','宁':'nìng','嗣':'sì','音':'yīn','佩':'pèi','达':'dá','阙':'quē','挑':'tiāo','兮':'xī','达':'dá','月':'yuè','三':'sān','对':'duì','当':'dāng','歌':'gē','几':'jǐ','何':'hé','譬':'pì','如':'rú','朝':'zhāo','露':'lù','慷':'kāng','慨':'kǎi','忘':'wàng','康':'kāng','呦':'yōu','鹿':'lù','鸣':'míng','食':'shí','苹':'píng','嘉':'jiā','宾':'bīn','瑟':'sè','笙':'shēng','明':'míng','月':'yuè','掇':'duō','陌':'mò','阡':'qiān','枉':'wǎng','存':'cún','契':'qì','阔':'kuò','谈':'tán','讌':'yàn','旧':'jiù','恩':'ēn','稀':'xī','鹊':'què','匝':'zā','厌':'yàn','海':'hǎi','吐':'tǔ','哺':'bǔ','归':'guī','衣':'yī','袍':'páo','兴':'xìng','师':'shī','戈':'gē','矛':'máo','仇':'chóu','泽':'zé','戟':'jǐ','作':'zuò','裳':'cháng','甲':'jiǎ','兵':'bīng','行':'xíng','潮':'cháo','连':'lián','平':'píng','共':'gòng','生':'shēng','滟':'yàn','波':'bō','宛':'wǎn','转':'zhuǎn','绕':'rào','甸':'diàn','霰':'xiàn','空':'kōng','流':'liú','霜':'shuāng','沙':'shā','纤':'xiān','尘':'chén','皎':'jiǎo','畔':'pàn','初':'chū','照':'zhào','代':'dài','穷':'qióng','已':'yǐ','似':'sì','待':'dài','送':'sòng','悠':'yōu','青':'qīng','枫':'fēng','浦':'pǔ','胜':'shèng','扁':'piān','舟':'zhōu','楼':'lóu','可':'kě','怜':'lián','妆':'zhuāng','镜':'jìng','台':'tái','户':'hù','卷':'juǎn','捣':'dǎo','砧':'zhēn','拂':'fú','还':'hái','逐':'zhú','华':'huá','君':'jūn','鸿':'hóng','度':'dù','潜':'qián','跃':'yuè','文':'wén','闲':'xián','潭':'tán','半':'bàn','沉':'chén','斜':'xié','海':'hǎi','雾':'wù','碣':'jié','潇':'xiāo','乘':'chéng','摇':'yáo','帝':'dì','阳':'yáng','苗':'miáo','裔':'yì','朕':'zhèn','皇':'huáng','考':'kǎo','伯':'bó','庸':'yōng','摄':'shè','提':'tí','贞':'zhēn','孟':'mèng','陬':'zōu','庚':'gēng','寅':'yín','降':'jiàng','览':'lǎn','揆':'kuí','度':'dù','肇':'zhào','锡':'cì','嘉':'jiā','名':'míng','均':'jūn','纷':'fēn','内':'nèi','重':'zhòng','能':'néng','扈':'hù','离':'lí','辟':'pì','芷':'zhǐ','纫':'rèn','秋':'qiū','兰':'lán','为':'wéi','佩':'pèi','汩':'gǔ','及':'jí','岁':'suì','与':'yǔ','蜀':'shǔ','道':'dào','噫':'yī','吁':'xū','嚱':'xì','危':'wēi','乎':'hū','蚕':'cán','丛':'cóng','鱼':'yú','凫':'fú','开':'kāi','国':'guó','茫':'máng','然':'rán','岁':'suì','塞':'sài','通':'tōng','当':'dāng','太':'tài','横':'héng','绝':'jué','眉':'méi','巅':'diān','崩':'bēng','摧':'cuī','壮':'zhuàng','士':'shì','天':'tiān','梯':'tī','栈':'zhàn','钩':'gōu','龙':'lóng','标':'biāo','冲':'chōng','逆':'nì','折':'zhé','黄':'huáng','鹤':'hè','尚':'shàng','猿':'yuán','猱':'náo','愁':'chóu','攀':'pān','援':'yuán','青':'qīng','泥':'ní','盘':'pán','萦':'yíng','峦':'luán','扪':'mén','参':'shēn','历':'lì','井':'jǐng','仰':'yǎng','胁':'xié','息':'xī','抚':'fǔ','膺':'yīng','坐':'zuò','叹':'tàn','哥':'gē','曲':'qǔ','项':'xiàng'
+};
+
+// fallback pinyin for chars not in dict
+function getPinyin(char) {
+  const p = PUNYIN[char];
+  if (p) return p;
+  // common Chinese punctuation
+  if (/，。！？、；：""''【】《》（）·…—～/.test(char)) return '';
+  return char; // fallback: show the char itself
+}
+
+// ===== STATE =====
+let state = {
+  currentLevel: 'primary',
+  currentUnit: null,
+  currentPoem: null,
+  currentTab: 'units',
+  accounts: [],
+  currentAccountId: null,
+  speaking: false
+};
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem('gushici_state');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      state = { ...state, ...parsed };
+    }
+  } catch(e) {}
+  if (!state.accounts || state.accounts.length === 0) {
+    addAccountRaw('我的账号');
+  }
+  if (!state.currentAccountId) {
+    state.currentAccountId = state.accounts[0]?.id || null;
+  }
+}
+function saveState() {
+  try {
+    localStorage.setItem('gushici_state', JSON.stringify({
+      accounts: state.accounts,
+      currentAccountId: state.currentAccountId
+    }));
+  } catch(e) {}
+}
+function getAccount() {
+  return state.accounts.find(a => a.id === state.currentAccountId) || state.accounts[0];
+}
+function addAccountRaw(name) {
+  const id = 'acc_' + Date.now();
+  state.accounts.push({ id, name, records: [] });
+  state.currentAccountId = id;
+  saveState();
+  return id;
+}
+function isCheckedIn(poemId) {
+  const acc = getAccount();
+  if (!acc) return false;
+  return acc.records.some(r => r.poemId === poemId);
+}
+function getCheckInDate(poemId) {
+  const acc = getAccount();
+  if (!acc) return null;
+  const r = acc.records.find(r => r.poemId === poemId);
+  return r ? r.date : null;
+}
+
+// ===== RENDER =====
+function renderSidebar() {
+  const data = POETRY_DATA[state.currentLevel];
+  const container = document.getElementById('sidebar-content');
+  const account = getAccount();
+  document.getElementById('currentAccount').textContent = account ? `📝 ${account.name}` : '';
+
+  if (state.currentTab === 'records') {
+    renderRecordsTab(container, account);
+    return;
+  }
+  if (state.currentTab === 'poems') {
+    renderPoemsTab(container, data);
+    return;
+  }
+  // units tab
+  let html = '';
+  data.units.forEach(unit => {
+    const total = unit.items.length;
+    const done = unit.items.filter(p => isCheckedIn(p.id)).length;
+    const active = state.currentUnit === unit.id ? 'active' : '';
+    html += `<div class="unit-item ${active}" onclick="selectUnit('${unit.id}')">
+      <span>${unit.label}</span>
+      <span class="count">${done}/${total}</span>
+    </div>`;
+  });
+  container.innerHTML = html;
+
+  // auto-show poems if unit selected
+  if (state.currentUnit) {
+    const unit = data.units.find(u => u.id === state.currentUnit);
+    if (unit) renderPoemList(unit.items);
+  }
+}
+
+function renderPoemsTab(container, data) {
+  let html = '';
+  data.units.forEach(unit => {
+    html += `<div style="margin-bottom:16px">
+      <div style="font-size:.8rem;color:var(--muted);padding:4px 0;font-weight:600;">${unit.label}</div>`;
+    unit.items.forEach(p => {
+      const done = isCheckedIn(p.id);
+      html += `<div class="poem-card ${state.currentPoem?.id === p.id ? 'active' : ''}" onclick="selectPoem('${p.id}')">
+        <h4>${done ? '<span style="color:var(--primary)">✅</span> ' : ''}${p.title}</h4>
+        <p>${p.author} · ${p.dynasty}</p>
+      </div>`;
+    });
+    html += '</div>';
+  });
+  container.innerHTML = html;
+}
+
+function renderRecordsTab(container, account) {
+  const records = account?.records || [];
+  const today = new Date().toDateString();
+  let html = '';
+  if (records.length === 0) {
+    html = `<div style="text-align:center;padding:40px 20px;color:var(--muted)">
+      <div style="font-size:3rem;opacity:.3;margin-bottom:12px">📋</div>
+      <div>还没有打卡记录</div>
+      <div style="font-size:.8rem;margin-top:8px">选择古诗开始你的第一次打卡吧</div>
+    </div>`;
+  } else {
+    // group by date
+    const byDate = {};
+    records.slice().reverse().forEach(r => {
+      const d = new Date(r.date).toDateString();
+      if (!byDate[d]) byDate[d] = [];
+      byDate[d].push(r);
+    });
+    Object.entries(byDate).forEach(([date, recs]) => {
+      const isToday = date === today;
+      html += `<div style="font-size:.78rem;color:var(--muted);margin:12px 0 4px;font-weight:600;">${isToday ? '🗓 今日' : '📅 '+date}</div>`;
+      recs.forEach(r => {
+        const poem = findPoem(r.poemId);
+        if (!poem) return;
+        const time = new Date(r.date).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+        html += `<div class="record-item ${isToday ? 'today' : ''}">
+          <div>
+            <div class="poem-name">${poem.title}</div>
+            <div class="poem-meta">${poem.author} · ${poem.dynasty} · ${poem.grade}</div>
+          </div>
+          <div class="record-time">${time}</div>
+        </div>`;
+      });
+    });
+  }
+  container.innerHTML = html;
+}
+
+function renderPoemList(items) {
+  // inject into detail panel or show in sidebar as list
+  const container = document.getElementById('sidebar-content');
+  // For units tab, show the poem list in sidebar when unit is active
+  const data = POETRY_DATA[state.currentLevel];
+  const unit = data.units.find(u => u.id === state.currentUnit);
+  if (!unit) return;
+  
+  let html = `<div style="margin-bottom:8px">
+    <button class="btn btn-outline" style="padding:6px 12px;font-size:.8rem" onclick="switchTab('units')">← 返回单元</button>
+  </div>`;
+  unit.items.forEach(p => {
+    const done = isCheckedIn(p.id);
+    html += `<div class="poem-card ${state.currentPoem?.id === p.id ? 'active' : ''}" onclick="selectPoem('${p.id}')">
+      <h4>${done ? '<span style="color:var(--primary)">✅</span> ' : ''}${p.title}</h4>
+      <p>${p.author} · ${p.dynasty}</p>
+    </div>`;
+  });
+  container.innerHTML = html;
+}
+
+function findPoem(id) {
+  for (const level of Object.values(POETRY_DATA)) {
+    for (const unit of level.units) {
+      const found = unit.items.find(p => p.id === id);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function renderDetail() {
+  const poem = state.currentPoem;
+  const container = document.getElementById('detail-content');
+  const empty = document.getElementById('detail-empty');
+  
+  if (!poem) {
+    empty.style.display = 'flex';
+    container.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  container.style.display = 'block';
+
+  const checked = isCheckedIn(poem.id);
+  const checkDate = getCheckInDate(poem.id);
+  const checkedText = checked ? `✅ 已打卡（${new Date(checkDate).toLocaleDateString('zh-CN')}）` : '📝 打卡';
+
+  let shiciHtml = '';
+  poem.content.forEach(line => {
+    shiciHtml += '<div class="shici-row">';
+    for (const char of line) {
+      const p = getPinyin(char);
+      if (p === '') {
+        // punctuation
+        shiciHtml += `<span class="hanzi" style="font-size:1.2rem;margin:0 2px">${char}</span>`;
+      } else {
+        shiciHtml += `<div class="char-group">
+          <span class="pinyin">${p}</span>
+          <span class="hanzi">${char}</span>
+        </div>`;
+      }
+    }
+    shiciHtml += '</div>';
+  });
+
+  let shiyiHtml = '';
+  poem.shiyi.forEach((para, i) => {
+    const parts = para.split('\n').filter(Boolean);
+    shiyiHtml += '<div class="shiyi-item">';
+    parts.forEach((part, j) => {
+      if (j === 0) {
+        const match = part.match(/^(\d+)\.\s*(.*)/);
+        if (match) {
+          shiyiHtml += `<div class="shiyi-num">${match[1]}</div><div class="shiyi-text">${match[2]}</div>`;
+        } else {
+          shiyiHtml += `<div class="shiyi-num">${i+1}</div><div class="shiyi-text">${part}</div>`;
+        }
+      } else {
+        shiyiHtml += `<div style="margin-left:30px" class="shiyi-text">${part}</div>`;
+      }
+    });
+    shiyiHtml += '</div>';
+  });
+
+  container.innerHTML = `
+    <div class="detail-box">
+      <div class="detail-header">
+        <div class="detail-title">
+          <h2>${poem.title}</h2>
+          <div class="author">${poem.dynasty} · ${poem.author} · ${poem.grade}</div>
+        </div>
+        <div class="detail-actions">
+          <button class="checkin-btn ${checked ? 'checked' : ''}" id="checkinBtn" onclick="doCheckin()">
+            ${checked ? '✅ 已打卡' : '📝 打卡' }
+          </button>
+          <button class="speak-btn ${state.speaking ? 'playing' : ''}" id="speakBtn" onclick="speak()">
+            ${state.speaking ? '🔊 朗读中...' : '🔈 点击听读'}
+          </button>
+        </div>
+      </div>
+
+      <div class="shici-wrap">
+        ${shiciHtml}
+      </div>
+
+      <div class="detail-section">
+        <div class="section-title">释义</div>
+        <div class="shiyi">${shiyiHtml}</div>
+      </div>
+    </div>
+  `;
+}
+
+// ===== ACTIONS =====
+let currentUtterance = null;
+
+function speak() {
+  const poem = state.currentPoem;
+  if (!poem) return;
+  if (!('speechSynthesis' in window)) {
+    alert('您的浏览器不支持语音朗读功能，建议使用 Chrome 或 Edge 浏览器。');
+    return;
+  }
+
+  if (state.speaking) {
+    speechSynthesis.cancel();
+    state.speaking = false;
+    const btn = document.getElementById('speakBtn');
+    if (btn) { btn.classList.remove('playing'); btn.textContent = '🔈 点击听读'; }
+    return;
+  }
+
+  const text = poem.audioText || poem.content.join('。') + '。';
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'zh-CN';
+  utter.rate = 0.8;
+  utter.pitch = 1.0;
+  utter.volume = 1.0;
+
+  // Try to find a Chinese voice
+  const voices = speechSynthesis.getVoices();
+  const zhVoice = voices.find(v => v.lang.includes('zh') || v.lang.includes('CN'));
+  if (zhVoice) utter.voice = zhVoice;
+
+  utter.onend = utter.onerror = () => {
+    state.speaking = false;
+    const btn = document.getElementById('speakBtn');
+    if (btn) { btn.classList.remove('playing'); btn.textContent = '🔈 点击听读'; }
+  };
+
+  state.speaking = true;
+  const btn = document.getElementById('speakBtn');
+  if (btn) { btn.classList.add('playing'); btn.textContent = '🔊 朗读中...'; }
+
+  speechSynthesis.cancel();
+  speechSynthesis.speak(utter);
+  currentUtterance = utter;
+}
+
+function doCheckin() {
+  const poem = state.currentPoem;
+  if (!poem) return;
+  const acc = getAccount();
+  if (!acc) return;
+
+  // If already checked in, ask to remove
+  if (isCheckedIn(poem.id)) {
+    if (!confirm(`确定要取消"${poem.title}"的打卡记录吗？`)) return;
+    acc.records = acc.records.filter(r => r.poemId !== poem.id);
+    saveState();
+    renderAll();
+    return;
+  }
+
+  // Add record
+  acc.records.push({
+    poemId: poem.id,
+    date: new Date().toISOString()
+  });
+  saveState();
+
+  // Update button
+  const btn = document.getElementById('checkinBtn');
+  if (btn) {
+    btn.classList.add('checked');
+    btn.innerHTML = '✅ 已打卡';
+  }
+
+  // Re-render sidebar to update counts
+  renderSidebar();
+
+  // Show brief celebration
+  const toast = document.createElement('div');
+  toast.style = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#4a7c59,#6a9c79);color:#fff;padding:12px 28px;border-radius:30px;font-size:.95rem;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.2);transition:opacity .5s';
+  toast.textContent = `🎉 "${poem.title}" 打卡成功！`;
+  document.body.appendChild(toast);
+  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 2000);
+}
+
+// ===== ACCOUNT MODAL =====
+function openAccountModal() {
+  renderAccountList();
+  document.getElementById('accountModal').classList.remove('hidden');
+}
+function closeAccountModal() {
+  document.getElementById('accountModal').classList.add('hidden');
+  document.getElementById('newAccountName').value = '';
+}
+function renderAccountList() {
+  const container = document.getElementById('accountList');
+  let html = '';
+  state.accounts.forEach(acc => {
+    const isCurrent = acc.id === state.currentAccountId;
+    const count = acc.records.length;
+    html += `<div class="account-item ${isCurrent ? 'current' : ''}" onclick="${isCurrent ? '' : `switchAccount('${acc.id}')`}">
+      <div>
+        <div class="acc-name">${isCurrent ? '👉 ' : ''}${acc.name}</div>
+        <div class="acc-info">已打卡 ${count} 首</div>
+      </div>
+      ${!isCurrent ? `<div class="acc-actions" onclick="event.stopPropagation()">
+        <button class="btn btn-outline" style="padding:4px 10px;font-size:.75rem" onclick="deleteAccount('${acc.id}')">删除</button>
+      </div>` : ''}
+    </div>`;
+  });
+  container.innerHTML = html || '<div style="color:var(--muted);font-size:.85rem;text-align:center;padding:12px">暂无账号</div>';
+}
+function addAccount() {
+  const name = document.getElementById('newAccountName').value.trim();
+  if (!name) { alert('请输入账号名称'); return; }
+  addAccountRaw(name);
+  document.getElementById('newAccountName').value = '';
+  renderAccountList();
+  renderAll();
+}
+function switchAccount(id) {
+  state.currentAccountId = id;
+  saveState();
+  closeAccountModal();
+  renderAll();
+}
+function deleteAccount(id) {
+  if (state.accounts.length <= 1) {
+    alert('至少需要保留一个账号');
+    return;
+  }
+  state.accounts = state.accounts.filter(a => a.id !== id);
+  if (state.currentAccountId === id) {
+    state.currentAccountId = state.accounts[0]?.id || null;
+  }
+  saveState();
+  renderAccountList();
+  renderAll();
+}
+
+// ===== NAVIGATION =====
+function selectUnit(unitId) {
+  state.currentUnit = unitId;
+  state.currentPoem = null;
+  renderSidebar();
+  // Auto-select first poem
+  const data = POETRY_DATA[state.currentLevel];
+  const unit = data.units.find(u => u.id === unitId);
+  if (unit && unit.items.length > 0) {
+    selectPoem(unit.items[0].id);
+  }
+}
+
+function selectPoem(id) {
+  const poem = findPoem(id);
+  if (!poem) return;
+  state.currentPoem = poem;
+  // If coming from units tab, also set the unit
+  const data = POETRY_DATA[state.currentLevel];
+  for (const unit of data.units) {
+    if (unit.items.some(p => p.id === id)) {
+      state.currentUnit = unit.id;
+      break;
+    }
+  }
+  renderSidebar();
+  renderDetail();
+}
+
+function setLevel(level) {
+  state.currentLevel = level;
+  state.currentUnit = null;
+  state.currentPoem = null;
+  state.currentTab = 'units';
+  document.querySelectorAll('.level-tab').forEach((el, i) => {
+    const levels = ['primary', 'middle', 'high'];
+    el.classList.toggle('active', levels[i] === level);
+  });
+  document.querySelectorAll('.sidebar-tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-units').classList.add('active');
+  renderSidebar();
+  document.getElementById('detail-empty').style.display = 'flex';
+  document.getElementById('detail-content').style.display = 'none';
+}
+
+function switchTab(tab) {
+  state.currentTab = tab;
+  document.querySelectorAll('.sidebar-tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  renderSidebar();
+}
+
+function renderAll() {
+  renderSidebar();
+  renderDetail();
+}
+
+// ===== INIT =====
+function init() {
+  loadState();
+  renderAll();
+
+  // Pre-load voices (Chrome needs this)
+  if ('speechSynthesis' in window) {
+    speechSynthesis.getVoices();
+    speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
+  }
+
+  // Close modal on overlay click
+  document.getElementById('accountModal').addEventListener('click', function(e) {
+    if (e.target === this) closeAccountModal();
+  });
+
+  // Keyboard shortcut: Enter to add account
+  document.getElementById('newAccountName').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') addAccount();
+  });
+}
+
+// Ensure voices loaded before speaking
+if ('speechSynthesis' in window) {
+  speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+init();
