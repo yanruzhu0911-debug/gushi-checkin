@@ -146,8 +146,7 @@ body{font-family:'Noto Serif SC','Songti SC',Georgia,serif;background:var(--bg);
         <div class="level-tab" onclick="setLevel('high')">高中</div>
       </div>
       <div class="sidebar-tabs">
-        <div class="sidebar-tab active" id="tab-units" onclick="switchTab('units')">📖 单元</div>
-        <div class="sidebar-tab" id="tab-poems" onclick="switchTab('poems')">📚 诗词</div>
+        <div class="sidebar-tab active" id="tab-poems" onclick="switchTab('poems')">📚 诗词</div>
         <div class="sidebar-tab" id="tab-records" onclick="switchTab('records')">✅ 打卡</div>
       </div>
       <div class="sidebar-content" id="sidebar-content">
@@ -454,7 +453,7 @@ let state = {
   currentLevel: 'primary',
   currentUnit: null,
   currentPoem: null,
-  currentTab: 'units',
+  currentTab: 'poems',
   accounts: [],
   currentAccountId: null,
   speaking: false
@@ -516,28 +515,7 @@ function renderSidebar() {
     renderRecordsTab(container, account);
     return;
   }
-  if (state.currentTab === 'poems') {
-    renderPoemsTab(container, data);
-    return;
-  }
-  // units tab
-  let html = '';
-  data.units.forEach(unit => {
-    const total = unit.items.length;
-    const done = unit.items.filter(p => isCheckedIn(p.id)).length;
-    const active = state.currentUnit === unit.id ? 'active' : '';
-    html += `<div class="unit-item ${active}" onclick="selectUnit('${unit.id}')">
-      <span>${unit.label}</span>
-      <span class="count">${done}/${total}</span>
-    </div>`;
-  });
-  container.innerHTML = html;
-
-  // auto-show poems if unit selected
-  if (state.currentUnit) {
-    const unit = data.units.find(u => u.id === state.currentUnit);
-    if (unit) renderPoemList(unit.items);
-  }
+  renderPoemsTab(container, data);
 }
 
 function renderPoemsTab(container, data) {
@@ -595,26 +573,6 @@ function renderRecordsTab(container, account) {
   container.innerHTML = html;
 }
 
-function renderPoemList(items) {
-  // inject into detail panel or show in sidebar as list
-  const container = document.getElementById('sidebar-content');
-  // For units tab, show the poem list in sidebar when unit is active
-  const data = POETRY_DATA[state.currentLevel];
-  const unit = data.units.find(u => u.id === state.currentUnit);
-  if (!unit) return;
-  
-  let html = `<div style="margin-bottom:8px">
-    <button class="btn btn-outline" style="padding:6px 12px;font-size:.8rem" onclick="switchTab('units')">← 返回单元</button>
-  </div>`;
-  unit.items.forEach(p => {
-    const done = isCheckedIn(p.id);
-    html += `<div class="poem-card ${state.currentPoem?.id === p.id ? 'active' : ''}" onclick="selectPoem('${p.id}')">
-      <h4>${done ? '<span style="color:var(--primary)">✅</span> ' : ''}${p.title}</h4>
-      <p>${p.author} · ${p.dynasty}</p>
-    </div>`;
-  });
-  container.innerHTML = html;
-}
 
 function findPoem(id) {
   for (const level of Object.values(POETRY_DATA)) {
@@ -857,17 +815,6 @@ function deleteAccount(id) {
 }
 
 // ===== NAVIGATION =====
-function selectUnit(unitId) {
-  state.currentUnit = unitId;
-  state.currentPoem = null;
-  renderSidebar();
-  // Auto-select first poem
-  const data = POETRY_DATA[state.currentLevel];
-  const unit = data.units.find(u => u.id === unitId);
-  if (unit && unit.items.length > 0) {
-    selectPoem(unit.items[0].id);
-  }
-}
 
 function selectPoem(id) {
   const poem = findPoem(id);
@@ -889,13 +836,13 @@ function setLevel(level) {
   state.currentLevel = level;
   state.currentUnit = null;
   state.currentPoem = null;
-  state.currentTab = 'units';
+  state.currentTab = 'poems';
   document.querySelectorAll('.level-tab').forEach((el, i) => {
     const levels = ['primary', 'middle', 'high'];
     el.classList.toggle('active', levels[i] === level);
   });
   document.querySelectorAll('.sidebar-tab').forEach(el => el.classList.remove('active'));
-  document.getElementById('tab-units').classList.add('active');
+  document.getElementById('tab-poems').classList.add('active');
   renderSidebar();
   document.getElementById('detail-empty').style.display = 'flex';
   document.getElementById('detail-content').style.display = 'none';
