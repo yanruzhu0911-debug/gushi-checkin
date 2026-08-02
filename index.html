@@ -55,6 +55,7 @@ body{font-family:'Noto Serif SC','Songti SC',Georgia,serif;background:var(--bg);
 .tree-node{display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:8px;cursor:pointer;font-size:.88rem;color:var(--text);transition:background .15s;user-select:none}
 .tree-node:hover{background:#f0ede5}
 .tree-grade-node{font-weight:600;color:var(--primary-dark)}
+.tree-level-node{font-weight:700;color:var(--primary);background:#eef5f0;border-radius:8px;margin:2px 0}
 .tree-unit-node{color:#555;font-size:.84rem}
 .tree-arrow{display:inline-block;width:14px;text-align:center;color:var(--muted);font-size:.7rem}
 .tree-children{margin-left:6px;padding-left:8px;border-left:1px dashed var(--border)}
@@ -154,11 +155,6 @@ body{font-family:'Noto Serif SC','Songti SC',Georgia,serif;background:var(--bg);
   <div class="main">
     <!-- Sidebar -->
     <div class="sidebar">
-      <div class="level-tabs">
-        <div class="level-tab active" onclick="setLevel('primary')">小学</div>
-        <div class="level-tab" onclick="setLevel('middle')">初中</div>
-        <div class="level-tab" onclick="setLevel('high')">高中</div>
-      </div>
       <div class="sidebar-tabs">
         <div class="sidebar-tab active" id="tab-poems" onclick="switchTab('poems')">📚 诗词</div>
         <div class="sidebar-tab" id="tab-records" onclick="switchTab('records')">✅ 打卡</div>
@@ -521,7 +517,6 @@ function getCheckInDate(poemId) {
 
 // ===== RENDER =====
 function renderSidebar() {
-  const data = POETRY_DATA[state.currentLevel];
   const container = document.getElementById('sidebar-content');
   const account = getAccount();
   document.getElementById('currentAccount').textContent = account ? `📝 ${account.name}` : '';
@@ -530,7 +525,7 @@ function renderSidebar() {
     renderRecordsTab(container, account);
     return;
   }
-  renderPoemsTab(container, data);
+  renderPoemsTab(container);
 }
 
 function gradeOfUnit(unit) {
@@ -544,55 +539,72 @@ function gradeOfUnit(unit) {
 }
 
 function toggleNode(id) {
-  const def = id.startsWith('g_') ? true : false;
+  const def = (id.startsWith('g_') || id.startsWith('lvl_')) ? true : false;
   const cur = state.expanded[id] === undefined ? def : state.expanded[id];
   state.expanded[id] = !cur;
   renderSidebar();
 }
 
-function renderPoemsTab(container, data) {
-  // 构建 年级 -> 单元 -> 诗词 三级可折叠目录
-  const gradeMap = {};
-  data.units.forEach(unit => {
-    const g = gradeOfUnit(unit);
-    if (!gradeMap[g]) gradeMap[g] = [];
-    gradeMap[g].push(unit);
-  });
+function renderPoemsTab(container) {
+  // 四层可折叠目录：学段(小学/初中/高中) -> 年级 -> 单元 -> 诗词
   let html = '';
-  Object.keys(gradeMap).forEach(g => {
-    const gid = 'g_' + g;
-    const gExp = state.expanded[gid] !== false; // 年级默认展开
+  const order = ['primary', 'middle', 'high'];
+  for (const lvlKey of order) {
+    const lvl = POETRY_DATA[lvlKey];
+    if (!lvl) continue;
+    const lid = 'lvl_' + lvlKey;
+    const lExp = state.expanded[lid] !== false; // 学段默认展开
     html += `<div class="tree-grade">
-      <div class="tree-node tree-grade-node" onclick="toggleNode('${gid}')">
-        <span class="tree-arrow">${gExp ? '▾' : '▸'}</span>
-        <span class="tree-label">${g}</span>
+      <div class="tree-node tree-level-node" onclick="toggleNode('${lid}')">
+        <span class="tree-arrow">${lExp ? '▾' : '▸'}</span>
+        <span class="tree-label">${lvl.label}</span>
       </div>`;
-    if (gExp) {
+    if (lExp) {
       html += '<div class="tree-children">';
-      gradeMap[g].forEach(unit => {
-        const uid = 'u_' + unit.id;
-        const uExp = state.expanded[uid] === true; // 单元默认折叠
-        html += `<div class="tree-node tree-unit-node" onclick="toggleNode('${uid}')">
-          <span class="tree-arrow">${uExp ? '▾' : '▸'}</span>
-          <span class="tree-label">${unit.label}</span>
-        </div>`;
-        if (uExp) {
+      const gradeMap = {};
+      lvl.units.forEach(unit => {
+        const g = gradeOfUnit(unit);
+        if (!gradeMap[g]) gradeMap[g] = [];
+        gradeMap[g].push(unit);
+      });
+      Object.keys(gradeMap).forEach(g => {
+        const gid = 'g_' + g;
+        const gExp = state.expanded[gid] !== false; // 年级默认展开
+        html += `<div class="tree-grade">
+          <div class="tree-node tree-grade-node" onclick="toggleNode('${gid}')">
+            <span class="tree-arrow">${gExp ? '▾' : '▸'}</span>
+            <span class="tree-label">${g}</span>
+          </div>`;
+        if (gExp) {
           html += '<div class="tree-children">';
-          unit.items.forEach(p => {
-            const done = isCheckedIn(p.id);
-            const active = state.currentPoem?.id === p.id ? 'active' : '';
-            html += `<div class="tree-poem ${active}" onclick="selectPoem('${p.id}')">
-              <span class="tree-dot">${done ? '✅' : '·'}</span>
-              <span class="tree-label">${p.title}</span>
+          gradeMap[g].forEach(unit => {
+            const uid = 'u_' + unit.id;
+            const uExp = state.expanded[uid] === true; // 单元默认折叠
+            html += `<div class="tree-node tree-unit-node" onclick="toggleNode('${uid}')">
+              <span class="tree-arrow">${uExp ? '▾' : '▸'}</span>
+              <span class="tree-label">${unit.label}</span>
             </div>`;
+            if (uExp) {
+              html += '<div class="tree-children">';
+              unit.items.forEach(p => {
+                const done = isCheckedIn(p.id);
+                const active = state.currentPoem?.id === p.id ? 'active' : '';
+                html += `<div class="tree-poem ${active}" onclick="selectPoem('${p.id}')">
+                  <span class="tree-dot">${done ? '✅' : '·'}</span>
+                  <span class="tree-label">${p.title}</span>
+                </div>`;
+              });
+              html += '</div>';
+            }
           });
           html += '</div>';
         }
+        html += '</div>';
       });
       html += '</div>';
     }
     html += '</div>';
-  });
+  }
   container.innerHTML = html;
 }
 
@@ -893,35 +905,23 @@ function selectPoem(id) {
   if (!poem) return;
   if (state.speaking) stopSpeak();
   state.currentPoem = poem;
-  const data = POETRY_DATA[state.currentLevel];
-  for (const unit of data.units) {
-    if (unit.items.some(p => p.id === id)) {
-      state.currentUnit = unit.id;
-      // 自动展开所在年级与单元，确保标题可见
-      state.expanded['g_' + gradeOfUnit(unit)] = true;
-      state.expanded['u_' + unit.id] = true;
-      break;
+  // 自动展开所属学段 / 年级 / 单元，确保标题可见
+  for (const lvlKey of ['primary', 'middle', 'high']) {
+    const lvl = POETRY_DATA[lvlKey];
+    if (!lvl) continue;
+    for (const unit of lvl.units) {
+      if (unit.items.some(p => p.id === id)) {
+        state.expanded['lvl_' + lvlKey] = true;
+        state.expanded['g_' + gradeOfUnit(unit)] = true;
+        state.expanded['u_' + unit.id] = true;
+        break;
+      }
     }
   }
   renderSidebar();
   renderDetail();
 }
 
-function setLevel(level) {
-  state.currentLevel = level;
-  state.currentUnit = null;
-  state.currentPoem = null;
-  state.currentTab = 'poems';
-  document.querySelectorAll('.level-tab').forEach((el, i) => {
-    const levels = ['primary', 'middle', 'high'];
-    el.classList.toggle('active', levels[i] === level);
-  });
-  document.querySelectorAll('.sidebar-tab').forEach(el => el.classList.remove('active'));
-  document.getElementById('tab-poems').classList.add('active');
-  renderSidebar();
-  document.getElementById('detail-empty').style.display = 'flex';
-  document.getElementById('detail-content').style.display = 'none';
-}
 
 function switchTab(tab) {
   state.currentTab = tab;
