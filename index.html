@@ -50,6 +50,19 @@ body{font-family:'Noto Serif SC','Songti SC',Georgia,serif;background:var(--bg);
 .poem-card p{font-size:.78rem;color:var(--muted)}
 .poem-card .meta{display:flex;gap:8px;font-size:.75rem;color:var(--muted);margin-top:4px}
 .poem-card .checkin-badge{float:right;background:#4a7c59;color:#fff;padding:2px 8px;border-radius:10px;font-size:.7rem}
+/* tree (诗词目录) */
+.tree-grade{margin-bottom:6px}
+.tree-node{display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:8px;cursor:pointer;font-size:.88rem;color:var(--text);transition:background .15s;user-select:none}
+.tree-node:hover{background:#f0ede5}
+.tree-grade-node{font-weight:600;color:var(--primary-dark)}
+.tree-unit-node{color:#555;font-size:.84rem}
+.tree-arrow{display:inline-block;width:14px;text-align:center;color:var(--muted);font-size:.7rem}
+.tree-children{margin-left:6px;padding-left:8px;border-left:1px dashed var(--border)}
+.tree-poem{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:.82rem;color:#444;transition:background .15s}
+.tree-poem:hover{background:#f0ede5}
+.tree-poem.active{background:#e8f4ec;color:var(--primary-dark);font-weight:600}
+.tree-dot{font-size:.7rem;color:var(--muted);min-width:14px;text-align:center}
+.tree-poem.active .tree-dot{color:var(--primary)}
 /* detail panel */
 .detail-panel{flex:1;overflow-y:auto;padding:24px;background:var(--bg)}
 .detail-panel::-webkit-scrollbar{width:6px}
@@ -67,18 +80,19 @@ body{font-family:'Noto Serif SC','Songti SC',Georgia,serif;background:var(--bg);
 .checkin-btn.checked{background:linear-gradient(135deg,#888,#aaa);cursor:default;transform:none;box-shadow:none}
 .checkin-btn.checked:hover{transform:none;box-shadow:none}
 /* pinyin text */
-.shici-wrap{margin:20px 0;line-height:2.2;font-size:1.15rem;border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:16px 0}
+.shici-wrap{margin:20px 0;line-height:2.2;font-size:0.95rem;border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:16px 0}
 .shici-row{display:flex;flex-wrap:wrap;gap:4px 16px;margin-bottom:4px}
 .char-group{display:inline-flex;flex-direction:column;align-items:center;margin-right:8px;line-height:1.4}
 .pinyin{font-size:.7rem;color:var(--primary);letter-spacing:0;font-family:sans-serif;min-height:1em}
-.hanzi{font-size:1.2rem;color:var(--text);min-height:1.4em}
+.hanzi{font-size:0.95rem;color:var(--text);min-height:1.4em}
 /* sections */
 .detail-section{margin-top:20px}
 .section-title{font-size:.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
-.shiyi{margin-top:14px;line-height:2;font-size:.95rem}
-.shiyi-item{display:flex;gap:10px;margin-bottom:8px}
-.shiyi-num{color:var(--accent);font-weight:700;min-width:20px}
-.shiyi-text{color:#444;line-height:1.7}
+.shiyi{margin-top:14px;font-size:.9rem}
+.shiyi-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.shiyi-chip{background:#f5f0e8;border:1px solid var(--border);border-radius:8px;padding:4px 9px;font-size:.8rem;line-height:1.5;flex:1 1 170px;min-width:140px;color:#444}
+.shiyi-chip b{color:var(--accent);margin-right:3px}
+.shiyi-yi{font-size:.85rem;line-height:1.75;color:#444;background:#eef5f0;border-left:3px solid var(--primary);padding:9px 11px;border-radius:6px;margin-top:4px}
 /* modal */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px}
 .modal-overlay.hidden{display:none}
@@ -456,7 +470,8 @@ let state = {
   currentTab: 'poems',
   accounts: [],
   currentAccountId: null,
-  speaking: false
+  speaking: false,
+  expanded: {}
 };
 
 function loadState() {
@@ -518,18 +533,64 @@ function renderSidebar() {
   renderPoemsTab(container, data);
 }
 
+function gradeOfUnit(unit) {
+  const g = unit.items[0]?.grade || '其他';
+  const map = {
+    '小一':'一年级','小二':'二年级','小三':'三年级','小四':'四年级','小五':'五年级','小六':'六年级',
+    '初一':'七年级','初二':'八年级','初三':'九年级',
+    '高一':'高一','高二':'高二'
+  };
+  return map[g] || g;
+}
+
+function toggleNode(id) {
+  const def = id.startsWith('g_') ? true : false;
+  const cur = state.expanded[id] === undefined ? def : state.expanded[id];
+  state.expanded[id] = !cur;
+  renderSidebar();
+}
+
 function renderPoemsTab(container, data) {
-  let html = '';
+  // 构建 年级 -> 单元 -> 诗词 三级可折叠目录
+  const gradeMap = {};
   data.units.forEach(unit => {
-    html += `<div style="margin-bottom:16px">
-      <div style="font-size:.8rem;color:var(--muted);padding:4px 0;font-weight:600;">${unit.label}</div>`;
-    unit.items.forEach(p => {
-      const done = isCheckedIn(p.id);
-      html += `<div class="poem-card ${state.currentPoem?.id === p.id ? 'active' : ''}" onclick="selectPoem('${p.id}')">
-        <h4>${done ? '<span style="color:var(--primary)">✅</span> ' : ''}${p.title}</h4>
-        <p>${p.author} · ${p.dynasty}</p>
+    const g = gradeOfUnit(unit);
+    if (!gradeMap[g]) gradeMap[g] = [];
+    gradeMap[g].push(unit);
+  });
+  let html = '';
+  Object.keys(gradeMap).forEach(g => {
+    const gid = 'g_' + g;
+    const gExp = state.expanded[gid] !== false; // 年级默认展开
+    html += `<div class="tree-grade">
+      <div class="tree-node tree-grade-node" onclick="toggleNode('${gid}')">
+        <span class="tree-arrow">${gExp ? '▾' : '▸'}</span>
+        <span class="tree-label">${g}</span>
       </div>`;
-    });
+    if (gExp) {
+      html += '<div class="tree-children">';
+      gradeMap[g].forEach(unit => {
+        const uid = 'u_' + unit.id;
+        const uExp = state.expanded[uid] === true; // 单元默认折叠
+        html += `<div class="tree-node tree-unit-node" onclick="toggleNode('${uid}')">
+          <span class="tree-arrow">${uExp ? '▾' : '▸'}</span>
+          <span class="tree-label">${unit.label}</span>
+        </div>`;
+        if (uExp) {
+          html += '<div class="tree-children">';
+          unit.items.forEach(p => {
+            const done = isCheckedIn(p.id);
+            const active = state.currentPoem?.id === p.id ? 'active' : '';
+            html += `<div class="tree-poem ${active}" onclick="selectPoem('${p.id}')">
+              <span class="tree-dot">${done ? '✅' : '·'}</span>
+              <span class="tree-label">${p.title}</span>
+            </div>`;
+          });
+          html += '</div>';
+        }
+      });
+      html += '</div>';
+    }
     html += '</div>';
   });
   container.innerHTML = html;
@@ -608,7 +669,7 @@ function renderDetail() {
       const p = getPinyin(char);
       if (p === '') {
         // punctuation
-        shiciHtml += `<span class="hanzi" style="font-size:1.2rem;margin:0 2px">${char}</span>`;
+        shiciHtml += `<span class="hanzi" style="font-size:0.95rem;margin:0 2px">${char}</span>`;
       } else {
         shiciHtml += `<div class="char-group">
           <span class="pinyin">${p}</span>
@@ -620,26 +681,30 @@ function renderDetail() {
   });
 
   let shiyiHtml = '';
-  poem.shiyi.forEach((para, i) => {
+  poem.shiyi.forEach(para => {
     const parts = para.split('\n').filter(Boolean);
-    shiyiHtml += '<div class="shiyi-item">';
-    parts.forEach((part, j) => {
-      if (j === 0) {
-        const match = part.match(/^(\d+)\.\s*(.*)/);
-        if (match) {
-          shiyiHtml += `<div class="shiyi-num">${match[1]}</div><div class="shiyi-text">${match[2]}</div>`;
-        } else {
-          shiyiHtml += `<div class="shiyi-num">${i+1}</div><div class="shiyi-text">${part}</div>`;
-        }
-      } else {
-        shiyiHtml += `<div style="margin-left:30px" class="shiyi-text">${part}</div>`;
-      }
+    let ann = [], yi = null;
+    parts.forEach(p => {
+      if (p.startsWith('诗意')) yi = p;
+      else ann.push(p);
     });
-    shiyiHtml += '</div>';
+    if (ann.length) {
+      shiyiHtml += '<div class="shiyi-row">';
+      ann.forEach(p => {
+        const m = p.match(/^(\d+)\.\s*(.*)/);
+        if (m) shiyiHtml += `<span class="shiyi-chip"><b>${m[1]}</b> ${m[2]}</span>`;
+        else shiyiHtml += `<span class="shiyi-chip">${p}</span>`;
+      });
+      shiyiHtml += '</div>';
+    }
+    if (yi) {
+      shiyiHtml += `<div class="shiyi-yi">${yi.replace('诗意：','<b>诗意：</b>')}</div>`;
+    }
   });
 
   container.innerHTML = `
     <div class="detail-box">
+      <audio id="speakAudio" style="display:none"></audio>
       <div class="detail-header">
         <div class="detail-title">
           <h2>${poem.title}</h2>
@@ -670,53 +735,60 @@ function renderDetail() {
 // ===== ACTIONS =====
 let currentUtterance = null;
 
-function speak() {
-  const poem = state.currentPoem;
-  if (!poem) return;
+function setSpeakBtn(playing) {
+  const btn = document.getElementById('speakBtn');
+  if (!btn) return;
+  if (playing) { btn.classList.add('playing'); btn.textContent = '🔊 朗读中...'; }
+  else { btn.classList.remove('playing'); btn.textContent = '🔈 点击听读'; }
+}
+function resetSpeakBtn() { setSpeakBtn(false); }
+
+function stopSpeak() {
+  const audio = document.getElementById('speakAudio');
+  if (audio && !audio.paused) audio.pause();
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  state.speaking = false;
+  resetSpeakBtn();
+}
+
+function fallbackSpeak(poem) {
   if (!('speechSynthesis' in window)) {
-    alert('您的浏览器不支持语音朗读功能，建议使用 Chrome 或 Edge 浏览器。');
+    alert('当前环境暂不支持语音朗读，请在电脑浏览器中打开，或稍后重试。');
+    state.speaking = false; resetSpeakBtn();
     return;
   }
-
-  if (state.speaking) {
-    speechSynthesis.cancel();
-    state.speaking = false;
-    const btn = document.getElementById('speakBtn');
-    if (btn) { btn.classList.remove('playing'); btn.textContent = '🔈 点击听读'; }
-    return;
-  }
-
-  // 朗读始终使用完整诗文，避免 audioText 被截断导致只读一半
+  // 朗读始终使用完整诗文
   let text = '';
-  if (poem.content && poem.content.length) {
-    text = poem.content.join('。') + '。';
-  } else if (poem.audioText) {
-    text = poem.audioText;
-  }
+  if (poem.content && poem.content.length) text = poem.content.join('。') + '。';
+  else if (poem.audioText) text = poem.audioText;
   const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = 'zh-CN';
-  utter.rate = 0.8;
-  utter.pitch = 1.0;
-  utter.volume = 1.0;
-
-  // Try to find a Chinese voice
+  utter.lang = 'zh-CN'; utter.rate = 0.8; utter.pitch = 1.0; utter.volume = 1.0;
   const voices = speechSynthesis.getVoices();
   const zhVoice = voices.find(v => v.lang.includes('zh') || v.lang.includes('CN'));
   if (zhVoice) utter.voice = zhVoice;
+  utter.onend = utter.onerror = () => { state.speaking = false; resetSpeakBtn(); };
+  state.speaking = true; setSpeakBtn(true);
+  speechSynthesis.cancel(); speechSynthesis.speak(utter);
+}
 
-  utter.onend = utter.onerror = () => {
-    state.speaking = false;
-    const btn = document.getElementById('speakBtn');
-    if (btn) { btn.classList.remove('playing'); btn.textContent = '🔈 点击听读'; }
-  };
+function speak() {
+  const poem = state.currentPoem;
+  if (!poem) return;
+  if (state.speaking) { stopSpeak(); return; }
 
-  state.speaking = true;
-  const btn = document.getElementById('speakBtn');
-  if (btn) { btn.classList.add('playing'); btn.textContent = '🔊 朗读中...'; }
-
-  speechSynthesis.cancel();
-  speechSynthesis.speak(utter);
-  currentUtterance = utter;
+  const audio = document.getElementById('speakAudio');
+  if (audio) {
+    let fell = false;
+    const doFallback = () => { if (fell) return; fell = true; fallbackSpeak(poem); };
+    audio.onended = () => { state.speaking = false; resetSpeakBtn(); };
+    audio.onerror = doFallback;
+    audio.src = 'audio/' + poem.id + '.mp3';
+    state.speaking = true; setSpeakBtn(true);
+    const p = audio.play();
+    if (p && p.catch) p.catch(doFallback);
+    return;
+  }
+  fallbackSpeak(poem);
 }
 
 function doCheckin() {
@@ -819,12 +891,15 @@ function deleteAccount(id) {
 function selectPoem(id) {
   const poem = findPoem(id);
   if (!poem) return;
+  if (state.speaking) stopSpeak();
   state.currentPoem = poem;
-  // If coming from units tab, also set the unit
   const data = POETRY_DATA[state.currentLevel];
   for (const unit of data.units) {
     if (unit.items.some(p => p.id === id)) {
       state.currentUnit = unit.id;
+      // 自动展开所在年级与单元，确保标题可见
+      state.expanded['g_' + gradeOfUnit(unit)] = true;
+      state.expanded['u_' + unit.id] = true;
       break;
     }
   }
