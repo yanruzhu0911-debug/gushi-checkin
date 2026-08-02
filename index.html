@@ -728,7 +728,13 @@ function speak() {
     return;
   }
 
-  const text = poem.audioText || poem.content.join('。') + '。';
+  // 朗读始终使用完整诗文，避免 audioText 被截断导致只读一半
+  let text = '';
+  if (poem.content && poem.content.length) {
+    text = poem.content.join('。') + '。';
+  } else if (poem.audioText) {
+    text = poem.audioText;
+  }
   const utter = new SpeechSynthesisUtterance(text);
   utter.lang = 'zh-CN';
   utter.rate = 0.8;
@@ -936,3 +942,6 @@ if ('speechSynthesis' in window) {
 
 document.addEventListener('DOMContentLoaded', init);
 init();
+</script>
+</body>
+</html>
