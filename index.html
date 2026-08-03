@@ -62,8 +62,7 @@ body{font-family:'Noto Serif SC','Songti SC',Georgia,serif;background:var(--bg);
 .tree-poem .tree-dot{font-size:.7rem;color:var(--muted);min-width:14px;text-align:center;flex-shrink:0}
 .tree-poem.active .tree-dot{color:var(--primary)}
 .tree-poem .tree-label{font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tree-poem-actions{display:flex;align-items:center;gap:3px;flex-shrink:0;opacity:0;transition:opacity .15s}
-.tree-poem:hover .tree-poem-actions,.tree-poem.active .tree-poem-actions{opacity:1}
+.tree-poem-actions{display:flex;align-items:center;gap:3px;flex-shrink:0}
 .tree-icon-btn{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.72rem;cursor:pointer;color:var(--muted);transition:all .15s;line-height:1;padding:0;background:#fff;font-family:inherit}
 .tree-icon-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
 .tree-icon-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
@@ -132,6 +131,20 @@ body{font-family:'Noto Serif SC','Songti SC',Georgia,serif;background:var(--bg);
 .review-row .rv-status{font-size:.76rem;color:var(--muted)}
 .review-row .rv-status.due{color:#c0392b;font-weight:600}
 .review-row .rv-status.ok{color:var(--primary)}
+/* mastered stats */
+.mastered-stats{background:var(--card);border-radius:12px;padding:16px 20px;margin-bottom:16px;box-shadow:0 1px 6px rgba(0,0,0,.06)}
+.mastered-stats-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px}
+.mastered-stats-title{font-size:.95rem;font-weight:700;color:var(--primary-dark)}
+.mastered-stats-summary{font-size:.82rem;color:var(--muted)}
+.mastered-stats-summary b{color:var(--primary-dark)}
+.mastered-bar-wrap{height:10px;background:#eee;border-radius:5px;overflow:hidden;margin-bottom:12px}
+.mastered-bar-fill{height:100%;border-radius:5px;transition:width .4s}
+.mastered-breakdown{display:flex;flex-direction:column;gap:6px}
+.mastered-level{display:flex;align-items:center;gap:8px;font-size:.78rem}
+.mastered-level-label{color:var(--muted);width:36px;flex-shrink:0}
+.mastered-level-bar-wrap{flex:1;height:6px;background:#eee;border-radius:3px;overflow:hidden}
+.mastered-level-bar{height:100%;border-radius:3px;transition:width .4s}
+.mastered-level-count{color:var(--muted);width:80px;text-align:right;flex-shrink:0}
 /* modal */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px}
 .modal-overlay.hidden{display:none}
@@ -1636,6 +1649,16 @@ function gradeOfUnit(unit) {
 function toggleNode(id) {
   const def = false;
   const cur = state.expanded[id] === undefined ? def : state.expanded[id];
+  if (!cur) {
+    // 展开时：只保留当前路径，其他全部收起（同级手风琴）
+    const type = id.replace(/^(lvl_|g_|u_)/, '').slice(0, 3);
+    const pfx = id.slice(0, 3); // lvl_ / g_ / u_
+    Object.keys(state.expanded).forEach(k => {
+      if (k === id) return;
+      // 同类型节点（同学段/同年级/同单元组）
+      if (k.startsWith(pfx)) state.expanded[k] = false;
+    });
+  }
   state.expanded[id] = !cur;
   renderSidebar();
 }
@@ -1711,15 +1734,55 @@ function renderPoemsTab(container) {
   container.innerHTML = html;
 }
 
+// 统计已熟背古诗数量、各学段分布
+function renderMasteredStats() {
+  const acc = getAccount();
+  migrateAccount(acc);
+  const mastered = acc?.masteredPoems || [];
+  const total = Object.values(POETRY_DATA).reduce((s, l) => s + l.units.reduce((u, un) => u + un.items.length, 0), 0);
+  if (!total) return '';
+  const pct = Math.round(mastered.length / total * 100);
+  const levels = [
+    { key: 'primary', label: '小学', color: '#4a7c59' },
+    { key: 'middle',  label: '初中', color: '#6a9c79' },
+    { key: 'high',    label: '高中', color: '#e8a849' }
+  ];
+  const breakdown = levels.map(lv => {
+    const lvlData = POETRY_DATA[lv.key];
+    const lvlTotal = lvlData.units.reduce((s, un) => s + un.items.length, 0);
+    const lvlCount = mastered.filter(pid =>
+      lvlData.units.some(u => u.items.some(p => p.id === pid))
+    ).length;
+    const lvlPct = lvlTotal ? Math.round(lvlCount / lvlTotal * 100) : 0;
+    return { ...lv, total: lvlTotal, count: lvlCount, pct: lvlPct };
+  });
+  const barColor = pct === 100 ? '#4a7c59' : '#e8a849';
+  return `<div class="mastered-stats">
+    <div class="mastered-stats-header">
+      <div class="mastered-stats-title">🏆 熟背进度</div>
+      <div class="mastered-stats-summary">已熟背 <b>${mastered.length}</b> 首 / 共 ${total} 首 · <b>${pct}%</b></div>
+    </div>
+    <div class="mastered-bar-wrap"><div class="mastered-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
+    <div class="mastered-breakdown">
+      ${breakdown.map(lv => `
+        <div class="mastered-level">
+          <div class="mastered-level-label">${lv.label}</div>
+          <div class="mastered-level-bar-wrap"><div class="mastered-level-bar" style="width:${lv.pct}%;background:${lv.color}"></div></div>
+          <div class="mastered-level-count">${lv.count}/${lv.total} · ${lv.pct}%</div>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+
 function renderRecordsTab(container, account) {
   const records = account?.records || [];
   const today = new Date().toDateString();
-  let html = renderReviewOverview(account);
+  let html = renderMasteredStats() + renderReviewOverview(account);
   if (records.length === 0) {
-    html = `<div style="text-align:center;padding:40px 20px;color:var(--muted)">
-      <div style="font-size:3rem;opacity:.3;margin-bottom:12px">📋</div>
+    html += `<div style="text-align:center;padding:24px 20px;color:var(--muted);font-size:.85rem">
+      <div style="font-size:2rem;opacity:.3;margin-bottom:8px">📋</div>
       <div>还没有打卡记录</div>
-      <div style="font-size:.8rem;margin-top:8px">选择古诗开始你的第一次打卡吧</div>
+      <div style="font-size:.78rem;margin-top:6px">选择古诗开始你的第一次打卡吧</div>
     </div>`;
   } else {
     // group by date
