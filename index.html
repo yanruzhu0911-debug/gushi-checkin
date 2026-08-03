@@ -1351,8 +1351,8 @@ function getCheckInDates(poemId) {
     .map(r => new Date(r.date)).sort((a, b) => a - b);
 }
 
-// 艾宾浩斯标准复习间隔（天）：第1、2、4、7、15、30天
-const EBB_INTERVALS = [1, 2, 4, 7, 15, 30];
+// 艾宾浩斯标准复习间隔（天）：第1、2、4、7、11、15、21天
+const EBB_INTERVALS = [1, 2, 4, 7, 11, 15, 21];
 
 // 计算某首诗按遗忘曲线的复习计划
 function computeEbbinghaus(poemId) {
@@ -1392,14 +1392,15 @@ function ebbRetentionAt(t, reviewDays) {
 function renderEbbinghausSVG(eb) {
   const W = 560, H = 200, padL = 36, padR = 12, padT = 14, padB = 26;
   const plotW = W - padL - padR, plotH = H - padT - padB;
-  const maxDay = 30;
+  const maxDay = 21;
   const X = d => padL + (d / maxDay) * plotW;
   const Y = p => padT + (1 - p / 100) * plotH;
   const reviewDays = eb.milestones.filter(m => m.done).map(m => m.day);
   let pts = [];
-  for (let t = 0; t <= 30; t++) pts.push(`${X(t).toFixed(1)},${Y(ebbRetentionAt(t, reviewDays)).toFixed(1)}`);
+  for (let t = 0; t <= 21; t++) pts.push(`${X(t).toFixed(1)},${Y(ebbRetentionAt(t, reviewDays)).toFixed(1)}`);
   const thY = Y(50);
-  const xlabels = [0, 7, 15, 30].map(d => `<text x="${X(d)}" y="${H - 8}" class="ebb-axis" text-anchor="middle">${d}天</text>`).join('');
+  const xticks = [0, 7, 15, 21];
+  const xlabels = xticks.map((d, i) => `<text x="${X(d)}" y="${H - 8}" class="ebb-axis" text-anchor="${i === xticks.length - 1 ? 'end' : 'middle'}">${d}天</text>`).join('');
   let marks = '';
   eb.milestones.forEach(m => {
     const cx = X(m.day), cy = Y(ebbRetentionAt(m.day, reviewDays));
@@ -1444,7 +1445,7 @@ function renderEbbinghausHTML(poem) {
         ? `下次复习：${eb.next.target.toLocaleDateString('zh-CN')}（${labels[eb.next.day]}）`
         : `⚠️ ${labels[eb.next.day]}的复习已错过，建议尽快补复习`)
     : '🎉 全部复习节点完成，记忆已牢固！';
-  return `<div class="ebb-summary">已打卡 <b>${dates.length}</b> 次 · 首次学习 ${eb.learn.toLocaleDateString('zh-CN')} · 复习进度 <b>${doneCount}/6</b></div>
+  return `<div class="ebb-summary">已打卡 <b>${dates.length}</b> 次 · 首次学习 ${eb.learn.toLocaleDateString('zh-CN')} · 复习进度 <b>${doneCount}/${EBB_INTERVALS.length}</b></div>
     <div class="ebb-chart">${renderEbbinghausSVG(eb)}</div>
     <div class="ebb-next">${nextTxt}</div>
     <div class="ebb-schedule">${sched}</div>`;
