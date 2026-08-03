@@ -55,11 +55,19 @@ body{font-family:'Noto Serif SC','Songti SC',Georgia,serif;background:var(--bg);
 .tree-unit-node{color:#555;font-size:.84rem}
 .tree-arrow{display:inline-block;width:14px;text-align:center;color:var(--muted);font-size:.7rem}
 .tree-children{margin-left:6px;padding-left:8px;border-left:1px dashed var(--border)}
-.tree-poem{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:.82rem;color:#444;transition:background .15s}
-.tree-poem:hover{background:#f0ede5}
-.tree-poem.active{background:#e8f4ec;color:var(--primary-dark);font-weight:600}
-.tree-dot{font-size:.7rem;color:var(--muted);min-width:14px;text-align:center}
+.tree-poem{display:flex;align-items:center;justify-content:space-between;padding:4px 6px;border-radius:6px;transition:background .15s}
+.tree-poem:hover{background:rgba(74,124,89,.08)}
+.tree-poem.active{background:rgba(74,124,89,.14)}
+.tree-poem-row{display:flex;align-items:center;gap:6px;flex:1;cursor:pointer;min-width:0}
+.tree-poem .tree-dot{font-size:.7rem;color:var(--muted);min-width:14px;text-align:center;flex-shrink:0}
 .tree-poem.active .tree-dot{color:var(--primary)}
+.tree-poem .tree-label{font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tree-poem-actions{display:flex;align-items:center;gap:3px;flex-shrink:0;opacity:0;transition:opacity .15s}
+.tree-poem:hover .tree-poem-actions,.tree-poem.active .tree-poem-actions{opacity:1}
+.tree-icon-btn{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.72rem;cursor:pointer;color:var(--muted);transition:all .15s;line-height:1;padding:0;background:#fff;font-family:inherit}
+.tree-icon-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
+.tree-icon-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.tree-icon-btn.star.active{background:#f0c36d;border-color:#f0c36d}
 /* detail panel */
 .detail-panel{flex:1;overflow-y:auto;padding:24px;background:var(--bg)}
 .detail-panel::-webkit-scrollbar{width:6px}
@@ -197,9 +205,9 @@ body{font-family:'Noto Serif SC','Songti SC',Georgia,serif;background:var(--bg);
     <!-- Sidebar -->
     <div class="sidebar">
       <div class="sidebar-tabs">
-        <div class="sidebar-tab active" id="tab-poems" onclick="switchTab('poems')">📚 诗词</div>
+        <div class="sidebar-tab active" id="tab-poems" onclick="switchTab('poems')">📚 目录</div>
         <div class="sidebar-tab" id="tab-smart" onclick="switchTab('smart')">🎯 智能打卡</div>
-        <div class="sidebar-tab" id="tab-records" onclick="switchTab('records')">✅ 打卡</div>
+        <div class="sidebar-tab" id="tab-records" onclick="switchTab('records')">✅ 记录</div>
       </div>
       <div class="sidebar-content" id="sidebar-content">
         <!-- dynamic -->
@@ -1371,7 +1379,13 @@ function toggleSmartPoem(poemId) {
   else acc.smartPoems.push(poemId);
   saveState();
   renderDetail();
-  if (state.currentTab === 'smart') renderSidebar();
+  if (state.currentTab === 'poems') {
+    const c = document.getElementById('sidebar-content');
+    renderPoemsTab(c);
+  } else if (state.currentTab === 'smart') {
+    const c = document.getElementById('sidebar-content');
+    renderSmartTab(c, getAccount());
+  }
 }
 
 // 获取今天需要复习的智能打卡任务
@@ -1410,7 +1424,13 @@ function toggleMastered(poemId) {
   else acc.masteredPoems.push(poemId);
   saveState();
   renderDetail();
-  renderSidebar();
+  if (state.currentTab === 'poems') {
+    const c = document.getElementById('sidebar-content');
+    renderPoemsTab(c);
+  } else if (state.currentTab === 'smart') {
+    const c = document.getElementById('sidebar-content');
+    renderSmartTab(c, getAccount());
+  }
 }
 function isCheckedIn(poemId) {
   const acc = getAccount();
@@ -1584,7 +1604,7 @@ function renderSmartTab(container, account) {
     html = `<div style="text-align:center;padding:40px 20px;color:var(--muted)">
       <div style="font-size:3rem;opacity:.3;margin-bottom:12px">🎯</div>
       <div>今天没有需要复习的古诗</div>
-      <div style="font-size:.8rem;margin-top:8px">在诗词列表中点击「开始打卡」添加任务</div>
+      <div style="font-size:.8rem;margin-top:8px">在目录中点击「+」添加任务</div>
     </div>`;
   } else {
     html += `<div style="font-size:.78rem;color:var(--muted);margin:0 0 12px;font-weight:600;">📅 今天需要复习 ${tasks.length} 首</div>`;
@@ -1663,10 +1683,18 @@ function renderPoemsTab(container) {
               html += '<div class="tree-children">';
               unit.items.forEach(p => {
                 const done = isCheckedIn(p.id);
+                const smart = isSmartPoem(p.id);
+                const mastered = isMastered(p.id);
                 const active = state.currentPoem?.id === p.id ? 'active' : '';
-                html += `<div class="tree-poem ${active}" onclick="selectPoem('${p.id}')">
-                  <span class="tree-dot">${done ? '✅' : '·'}</span>
-                  <span class="tree-label">${p.title}</span>
+                html += `<div class="tree-poem ${active}">
+                  <div class="tree-poem-row" onclick="selectPoem('${p.id}')">
+                    <span class="tree-dot">${done ? '✅' : '·'}</span>
+                    <span class="tree-label">${p.title}</span>
+                  </div>
+                  <div class="tree-poem-actions">
+                    <span class="tree-icon-btn ${smart ? 'active' : ''}" onclick="event.stopPropagation();toggleSmartPoem('${p.id}')" title="加入智能打卡">${smart ? '✓' : '+'}</span>
+                    <span class="tree-icon-btn star ${mastered ? 'active' : ''}" onclick="event.stopPropagation();toggleMastered('${p.id}')" title="标记熟背">★</span>
+                  </div>
                 </div>`;
               });
               html += '</div>';
