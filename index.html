@@ -90,6 +90,34 @@ body{font-family:'Noto Serif SC','Songti SC',Georgia,serif;background:var(--bg);
 .shiyi-chip{background:#f5f0e8;border:1px solid var(--border);border-radius:8px;padding:4px 9px;font-size:.8rem;line-height:1.5;flex:1 1 170px;min-width:140px;color:#444}
 .shiyi-chip b{color:var(--accent);margin-right:3px}
 .shiyi-yi{font-size:.85rem;line-height:1.75;color:#444;background:#eef5f0;border-left:3px solid var(--primary);padding:9px 11px;border-radius:6px;margin-top:4px}
+.ebb-empty{font-size:.85rem;color:var(--muted);background:#faf7f0;border:1px dashed var(--border);border-radius:10px;padding:14px 16px;line-height:1.7}
+.ebb-summary{font-size:.82rem;color:#555;margin-bottom:10px}
+.ebb-summary b{color:var(--primary)}
+.ebb-chart{width:100%;background:#faf7f0;border-radius:10px;padding:6px 4px;box-sizing:border-box}
+.ebb-svg{width:100%;height:auto;display:block}
+.ebb-axis{font-size:10px;fill:var(--muted)}
+.ebb-next{font-size:.85rem;margin:10px 0 4px;color:var(--primary-dark);font-weight:600;line-height:1.5}
+.ebb-schedule{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:6px}
+.ebb-item{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--border);border-radius:9px;padding:7px 10px;font-size:.8rem}
+.ebb-item.done{border-color:var(--primary);background:#eef5f0}
+.ebb-item.missed{border-color:#e8b4b0}
+.ebb-item.upcoming{border-color:#e3dccb}
+.ebb-day{font-weight:700;color:var(--text);min-width:46px}
+.ebb-date{color:var(--muted);font-size:.72rem;flex:1}
+.ebb-badge{font-size:.72rem;white-space:nowrap}
+.ebb-item.done .ebb-badge{color:var(--primary)}
+.ebb-item.missed .ebb-badge{color:#c0392b}
+.ebb-item.upcoming .ebb-badge{color:#b08d3a}
+.undo-btn{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:9px;padding:8px 12px;cursor:pointer;font-size:.78rem;font-family:inherit}
+.undo-btn:hover{border-color:#e8b4b0;color:#c0392b}
+.review-overview{background:#faf7f0;border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px}
+.review-overview h3{font-size:.82rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:0 0 10px}
+.review-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px dashed #eee;font-size:.82rem}
+.review-row:last-child{border-bottom:none}
+.review-row .rv-name{font-weight:600}
+.review-row .rv-status{font-size:.76rem;color:var(--muted)}
+.review-row .rv-status.due{color:#c0392b;font-weight:600}
+.review-row .rv-status.ok{color:var(--primary)}
 /* modal */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px}
 .modal-overlay.hidden{display:none}
@@ -1315,6 +1343,134 @@ function getCheckInDate(poemId) {
   return r ? r.date : null;
 }
 
+// 某首诗的全部打卡时间（升序）
+function getCheckInDates(poemId) {
+  const acc = getAccount();
+  if (!acc) return [];
+  return acc.records.filter(r => r.poemId === poemId)
+    .map(r => new Date(r.date)).sort((a, b) => a - b);
+}
+
+// 艾宾浩斯标准复习间隔（天）：第1、2、4、7、15、30天
+const EBB_INTERVALS = [1, 2, 4, 7, 15, 30];
+
+// 计算某首诗按遗忘曲线的复习计划
+function computeEbbinghaus(poemId) {
+  const dates = getCheckInDates(poemId);
+  if (!dates.length) return null;
+  const learn = dates[0];
+  const now = new Date();
+  const dayMs = 86400000;
+  const daysSince = Math.floor((now - learn) / dayMs);
+  const milestones = EBB_INTERVALS.map(T => {
+    const target = new Date(learn.getTime() + T * dayMs);
+    // 某次复习落在目标日 ±1 天内即算完成（学习当天 d=0 不算复习）
+    const done = dates.some(d => {
+      const diff = Math.round((d - learn) / dayMs);
+      return diff >= 1 && Math.abs(diff - T) <= 1;
+    });
+    let status;
+    if (done) status = 'done';
+    else if (target > now) status = 'upcoming';
+    else status = 'missed';
+    return { day: T, target, done, status };
+  });
+  const next = milestones.find(m => !m.done) || null;
+  return { learn, daysSince, milestones, next };
+}
+
+// 记忆保持率：每次成功复习把保持率重置到 ~90%，之后按指数衰减（τ=8天）
+function ebbRetentionAt(t, reviewDays) {
+  let level = 100, last = 0;
+  for (const T of reviewDays) {
+    if (T <= t) { level = 90; last = T; }
+    else break;
+  }
+  return level * Math.exp(-(t - last) / 8);
+}
+
+function renderEbbinghausSVG(eb) {
+  const W = 560, H = 200, padL = 36, padR = 12, padT = 14, padB = 26;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const maxDay = 30;
+  const X = d => padL + (d / maxDay) * plotW;
+  const Y = p => padT + (1 - p / 100) * plotH;
+  const reviewDays = eb.milestones.filter(m => m.done).map(m => m.day);
+  let pts = [];
+  for (let t = 0; t <= 30; t++) pts.push(`${X(t).toFixed(1)},${Y(ebbRetentionAt(t, reviewDays)).toFixed(1)}`);
+  const thY = Y(50);
+  const xlabels = [0, 7, 15, 30].map(d => `<text x="${X(d)}" y="${H - 8}" class="ebb-axis" text-anchor="middle">${d}天</text>`).join('');
+  let marks = '';
+  eb.milestones.forEach(m => {
+    const cx = X(m.day), cy = Y(ebbRetentionAt(m.day, reviewDays));
+    if (m.status === 'done') marks += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="5" fill="#4a7c59" stroke="#fff" stroke-width="1.5"/>`;
+    else if (m.status === 'missed') marks += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="5" fill="#fff" stroke="#d9534f" stroke-width="2"/>`;
+    else marks += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="5" fill="#fff" stroke="#bbb" stroke-width="2"/>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" class="ebb-svg" preserveAspectRatio="xMidYMid meet">
+    <line x1="${padL}" y1="${thY}" x2="${W - padR}" y2="${thY}" stroke="#d8cdb8" stroke-dasharray="4 4" stroke-width="1"/>
+    <text x="${padL - 4}" y="${thY + 3}" class="ebb-axis" text-anchor="end">50%</text>
+    <polyline points="${pts.join(' ')}" fill="none" stroke="#4a7c59" stroke-width="2.5" stroke-linejoin="round"/>
+    ${marks}
+    ${xlabels}
+  </svg>`;
+}
+
+function renderEbbinghausHTML(poem) {
+  const dates = getCheckInDates(poem.id);
+  if (!dates.length) {
+    return `<div class="ebb-empty">📅 打卡后，这里会按 <b>艾宾浩斯遗忘曲线</b> 为你生成复习计划：第 1、2、4、7、15、30 天各复习一次，记忆最牢固。</div>`;
+  }
+  const eb = computeEbbinghaus(poem.id);
+  const labels = { 1: '第1天', 2: '第2天', 4: '第4天', 7: '第7天', 15: '第15天', 30: '第30天' };
+  let doneCount = 0, sched = '';
+  eb.milestones.forEach(m => {
+    if (m.done) doneCount++;
+    const tDate = m.target.toLocaleDateString('zh-CN');
+    let badge, cls;
+    if (m.status === 'done') { cls = 'done'; badge = '✅ 已复习'; }
+    else if (m.status === 'upcoming') {
+      const left = Math.ceil((m.target - new Date()) / 86400000);
+      cls = 'upcoming'; badge = '⏳ ' + left + '天后';
+    } else { cls = 'missed'; badge = '⚠️ 已错过'; }
+    sched += `<div class="ebb-item ${cls}">
+      <span class="ebb-day">${labels[m.day]}</span>
+      <span class="ebb-date">${tDate}</span>
+      <span class="ebb-badge">${badge}</span>
+    </div>`;
+  });
+  const nextTxt = eb.next
+    ? (eb.next.status === 'upcoming'
+        ? `下次复习：${eb.next.target.toLocaleDateString('zh-CN')}（${labels[eb.next.day]}）`
+        : `⚠️ ${labels[eb.next.day]}的复习已错过，建议尽快补复习`)
+    : '🎉 全部复习节点完成，记忆已牢固！';
+  return `<div class="ebb-summary">已打卡 <b>${dates.length}</b> 次 · 首次学习 ${eb.learn.toLocaleDateString('zh-CN')} · 复习进度 <b>${doneCount}/6</b></div>
+    <div class="ebb-chart">${renderEbbinghausSVG(eb)}</div>
+    <div class="ebb-next">${nextTxt}</div>
+    <div class="ebb-schedule">${sched}</div>`;
+}
+
+// 打卡 tab 顶部的「复习提醒」总览（按诗去重）
+function renderReviewOverview(account) {
+  const acc = account || getAccount();
+  if (!acc || !acc.records.length) return '';
+  const seen = {};
+  acc.records.forEach(r => { if (!seen[r.poemId]) seen[r.poemId] = r; });
+  const rows = Object.keys(seen).map(pid => {
+    const poem = findPoem(pid);
+    if (!poem) return '';
+    const eb = computeEbbinghaus(pid);
+    if (!eb) return '';
+    let statusTxt, cls;
+    if (!eb.next) { statusTxt = '✅ 复习完成'; cls = 'ok'; }
+    else if (eb.next.status === 'missed') { statusTxt = '⚠️ 复习已错过'; cls = 'due'; }
+    else { const left = Math.ceil((eb.next.target - new Date()) / 86400000); statusTxt = `⏳ ${left}天后复习`; cls = ''; }
+    return `<div class="review-row"><span class="rv-name">${poem.title}</span><span class="rv-status ${cls}">${statusTxt}</span></div>`;
+  }).filter(Boolean);
+  if (!rows.length) return '';
+  return `<div class="review-overview"><h3>📌 复习提醒（艾宾浩斯）</h3>${rows.join('')}</div>`;
+}
+
 // ===== RENDER =====
 function renderSidebar() {
   const container = document.getElementById('sidebar-content');
@@ -1411,7 +1567,7 @@ function renderPoemsTab(container) {
 function renderRecordsTab(container, account) {
   const records = account?.records || [];
   const today = new Date().toDateString();
-  let html = '';
+  let html = renderReviewOverview(account);
   if (records.length === 0) {
     html = `<div style="text-align:center;padding:40px 20px;color:var(--muted)">
       <div style="font-size:3rem;opacity:.3;margin-bottom:12px">📋</div>
@@ -1471,8 +1627,8 @@ function renderDetail() {
   container.style.display = 'block';
 
   const checked = isCheckedIn(poem.id);
-  const checkDate = getCheckInDate(poem.id);
-  const checkedText = checked ? `✅ 已打卡（${new Date(checkDate).toLocaleDateString('zh-CN')}）` : '📝 打卡';
+  const checkDates = getCheckInDates(poem.id);
+  const checkCount = checkDates.length;
 
   let shiciHtml = '';
   poem.content.forEach(line => {
@@ -1524,8 +1680,9 @@ function renderDetail() {
         </div>
         <div class="detail-actions">
           <button class="checkin-btn ${checked ? 'checked' : ''}" id="checkinBtn" onclick="doCheckin()">
-            ${checked ? '✅ 已打卡' : '📝 打卡' }
+            ${checked ? '✅ 复习打卡' : '📝 打卡' }
           </button>
+          ${checked ? `<button class="undo-btn" onclick="undoCheckin()">↩ 撤销上次</button>` : ''}
           <button class="speak-btn ${state.speaking ? 'playing' : ''}" id="speakBtn" onclick="speak()">
             ${state.speaking ? '🔊 朗读中...' : '🔈 点击听读'}
           </button>
@@ -1539,6 +1696,11 @@ function renderDetail() {
       <div class="detail-section">
         <div class="section-title">释义</div>
         <div class="shiyi">${shiyiHtml}</div>
+      </div>
+
+      <div class="detail-section">
+        <div class="section-title">📈 复习曲线（艾宾浩斯遗忘曲线）</div>
+        ${renderEbbinghausHTML(poem)}
       </div>
     </div>
   `;
@@ -1609,30 +1771,15 @@ function doCheckin() {
   const acc = getAccount();
   if (!acc) return;
 
-  // If already checked in, ask to remove
-  if (isCheckedIn(poem.id)) {
-    if (!confirm(`确定要取消"${poem.title}"的打卡记录吗？`)) return;
-    acc.records = acc.records.filter(r => r.poemId !== poem.id);
-    saveState();
-    renderAll();
-    return;
-  }
-
-  // Add record
+  const first = !isCheckedIn(poem.id);
   acc.records.push({
     poemId: poem.id,
     date: new Date().toISOString()
   });
   saveState();
 
-  // Update button
-  const btn = document.getElementById('checkinBtn');
-  if (btn) {
-    btn.classList.add('checked');
-    btn.innerHTML = '✅ 已打卡';
-  }
-
-  // Re-render sidebar to update counts
+  // Re-render detail (updates button + Ebbinghaus) and sidebar counts
+  renderDetail();
   renderSidebar();
 
   // Show brief celebration
@@ -1641,6 +1788,22 @@ function doCheckin() {
   toast.textContent = `🎉 "${poem.title}" 打卡成功！`;
   document.body.appendChild(toast);
   setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 2000);
+}
+
+function undoCheckin() {
+  const poem = state.currentPoem;
+  if (!poem) return;
+  const acc = getAccount();
+  if (!acc) return;
+  for (let i = acc.records.length - 1; i >= 0; i--) {
+    if (acc.records[i].poemId === poem.id) {
+      acc.records.splice(i, 1);
+      break;
+    }
+  }
+  saveState();
+  renderDetail();
+  renderSidebar();
 }
 
 // ===== ACCOUNT MODAL =====
