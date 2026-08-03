@@ -113,6 +113,9 @@ body{font-family:'Noto Serif SC','Songti SC',Georgia,serif;background:var(--bg);
 .mastered-btn{background:#fff7e6;border:1.5px solid #f0c36d;color:#b08d3a;border-radius:10px;padding:8px 16px;cursor:pointer;font-size:.82rem;font-family:inherit;transition:all .2s}
 .mastered-btn:hover{background:#ffebb3}
 .mastered-btn.active{background:linear-gradient(135deg,#f0c36d,#e8a849);color:#fff;border-color:#e8a849}
+.smart-btn{background:#e8f4ec;border:1.5px solid var(--primary);color:var(--primary);border-radius:10px;padding:8px 16px;cursor:pointer;font-size:.82rem;font-family:inherit;transition:all .2s}
+.smart-btn:hover{background:#d4ebd9}
+.smart-btn.active{background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;border-color:var(--primary)}
 .review-overview{background:#faf7f0;border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px}
 .review-overview h3{font-size:.82rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:0 0 10px}
 .review-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px dashed #eee;font-size:.82rem}
@@ -150,6 +153,17 @@ body{font-family:'Noto Serif SC','Songti SC',Georgia,serif;background:var(--bg);
 .record-item .poem-meta{font-size:.78rem;color:var(--muted)}
 .record-item .record-time{font-size:.78rem;color:var(--muted)}
 .record-item.today{border-left-color:var(--accent)}
+/* smart task */
+.smart-task-item{background:var(--card);border-radius:10px;padding:14px 18px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.05);display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:all .2s;border-left:4px solid var(--primary)}
+.smart-task-item:hover{transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,0,0,.08)}
+.smart-task-item.missed{border-left-color:#c0392f}
+.smart-task-item.today{border-left-color:var(--accent)}
+.smart-task-info{flex:1}
+.smart-task-title{font-weight:600;font-size:.95rem;margin-bottom:4px}
+.smart-task-meta{font-size:.78rem;color:var(--muted)}
+.smart-task-badge{font-size:.72rem;padding:4px 10px;border-radius:20px;font-weight:600;white-space:nowrap}
+.smart-task-badge.today{background:#e8f4ec;color:var(--primary)}
+.smart-task-badge.missed{background:#fce8e6;color:#c0392f}
 /* speak button */
 .speak-btn{background:#eef5f0;color:var(--primary);border:1.5px solid var(--primary);border-radius:10px;padding:8px 18px;cursor:pointer;font-size:.82rem;font-family:inherit;transition:all .2s;display:inline-flex;align-items:center;gap:5px}
 .speak-btn:hover{background:var(--primary);color:#fff}
@@ -184,6 +198,7 @@ body{font-family:'Noto Serif SC','Songti SC',Georgia,serif;background:var(--bg);
     <div class="sidebar">
       <div class="sidebar-tabs">
         <div class="sidebar-tab active" id="tab-poems" onclick="switchTab('poems')">📚 诗词</div>
+        <div class="sidebar-tab" id="tab-smart" onclick="switchTab('smart')">🎯 智能打卡</div>
         <div class="sidebar-tab" id="tab-records" onclick="switchTab('records')">✅ 打卡</div>
       </div>
       <div class="sidebar-content" id="sidebar-content">
@@ -1325,19 +1340,59 @@ function saveState() {
   } catch(e) {}
 }
 
-// 迁移：给旧账号补 masteredPoems 字段
+// 迁移：给旧账号补 masteredPoems 和 smartPoems 字段
 function migrateAccount(acc) {
   if (!acc.masteredPoems) acc.masteredPoems = [];
+  if (!acc.smartPoems) acc.smartPoems = [];
 }
 function getAccount() {
   return state.accounts.find(a => a.id === state.currentAccountId) || state.accounts[0];
 }
 function addAccountRaw(name) {
   const id = 'acc_' + Date.now();
-  state.accounts.push({ id, name, records: [], masteredPoems: [] });
+  state.accounts.push({ id, name, records: [], masteredPoems: [], smartPoems: [] });
   state.currentAccountId = id;
   saveState();
   return id;
+}
+
+// 智能打卡相关
+function isSmartPoem(poemId) {
+  const acc = getAccount();
+  if (!acc) return false;
+  return (acc.smartPoems || []).includes(poemId);
+}
+function toggleSmartPoem(poemId) {
+  const acc = getAccount();
+  if (!acc) return;
+  if (!acc.smartPoems) acc.smartPoems = [];
+  const idx = acc.smartPoems.indexOf(poemId);
+  if (idx >= 0) acc.smartPoems.splice(idx, 1);
+  else acc.smartPoems.push(poemId);
+  saveState();
+  renderDetail();
+  if (state.currentTab === 'smart') renderSidebar();
+}
+
+// 获取今天需要复习的智能打卡任务
+function getTodaySmartTasks() {
+  const acc = getAccount();
+  if (!acc || !acc.smartPoems) return [];
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const tasks = [];
+  acc.smartPoems.forEach(pid => {
+    if (isMastered(pid)) return;
+    const eb = computeEbbinghaus(pid);
+    if (!eb || !eb.next) return;
+    const target = new Date(eb.next.target);
+    target.setHours(0,0,0,0);
+    const diffDays = Math.round((target - today) / 86400000);
+    if (diffDays <= 0) {
+      tasks.push({ poemId: pid, poem: findPoem(pid), next: eb.next, diffDays });
+    }
+  });
+  return tasks.sort((a,b) => a.diffDays - b.diffDays);
 }
 
 // 熟背相关
@@ -1507,13 +1562,45 @@ function renderReviewOverview(account) {
 function renderSidebar() {
   const container = document.getElementById('sidebar-content');
   const account = getAccount();
+  migrateAccount(account);
   document.getElementById('currentAccount').textContent = account ? `📝 ${account.name}` : '';
 
   if (state.currentTab === 'records') {
     renderRecordsTab(container, account);
     return;
   }
+  if (state.currentTab === 'smart') {
+    renderSmartTab(container, account);
+    return;
+  }
   renderPoemsTab(container);
+}
+
+// 智能打卡 Tab：显示今天需要复习的任务
+function renderSmartTab(container, account) {
+  const tasks = getTodaySmartTasks();
+  let html = '';
+  if (tasks.length === 0) {
+    html = `<div style="text-align:center;padding:40px 20px;color:var(--muted)">
+      <div style="font-size:3rem;opacity:.3;margin-bottom:12px">🎯</div>
+      <div>今天没有需要复习的古诗</div>
+      <div style="font-size:.8rem;margin-top:8px">在诗词列表中点击「开始打卡」添加任务</div>
+    </div>`;
+  } else {
+    html += `<div style="font-size:.78rem;color:var(--muted);margin:0 0 12px;font-weight:600;">📅 今天需要复习 ${tasks.length} 首</div>`;
+    tasks.forEach(t => {
+      const status = t.diffDays < 0 ? '已逾期' : '今天';
+      const cls = t.diffDays < 0 ? 'missed' : 'today';
+      html += `<div class="smart-task-item ${cls}" onclick="selectPoem('${t.poemId}')">
+        <div class="smart-task-info">
+          <div class="smart-task-title">${t.poem.title}</div>
+          <div class="smart-task-meta">${t.poem.author} · ${t.poem.grade} · ${t.poem.dynasty}</div>
+        </div>
+        <div class="smart-task-badge ${cls}">${status}</div>
+      </div>`;
+    });
+  }
+  container.innerHTML = html;
 }
 
 function gradeOfUnit(unit) {
@@ -1720,6 +1807,9 @@ function renderDetail() {
           </button>
           <button class="mastered-btn ${isMastered(poem.id) ? 'active' : ''}" id="masteredBtn" onclick="toggleMastered('${poem.id}')">
             ${isMastered(poem.id) ? '⭐ 已熟背' : '☆ 标记熟背'}
+          </button>
+          <button class="smart-btn ${isSmartPoem(poem.id) ? 'active' : ''}" id="smartBtn" onclick="toggleSmartPoem('${poem.id}')">
+            ${isSmartPoem(poem.id) ? '🎯 智能打卡中' : '📌 开始打卡'}
           </button>
         </div>
       </div>
