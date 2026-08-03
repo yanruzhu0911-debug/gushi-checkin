@@ -110,6 +110,9 @@ body{font-family:'Noto Serif SC','Songti SC',Georgia,serif;background:var(--bg);
 .ebb-item.upcoming .ebb-badge{color:#b08d3a}
 .undo-btn{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:9px;padding:8px 12px;cursor:pointer;font-size:.78rem;font-family:inherit}
 .undo-btn:hover{border-color:#e8b4b0;color:#c0392b}
+.mastered-btn{background:#fff7e6;border:1.5px solid #f0c36d;color:#b08d3a;border-radius:10px;padding:8px 16px;cursor:pointer;font-size:.82rem;font-family:inherit;transition:all .2s}
+.mastered-btn:hover{background:#ffebb3}
+.mastered-btn.active{background:linear-gradient(135deg,#f0c36d,#e8a849);color:#fff;border-color:#e8a849}
 .review-overview{background:#faf7f0;border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px}
 .review-overview h3{font-size:.82rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:0 0 10px}
 .review-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px dashed #eee;font-size:.82rem}
@@ -1321,15 +1324,38 @@ function saveState() {
     }));
   } catch(e) {}
 }
+
+// 迁移：给旧账号补 masteredPoems 字段
+function migrateAccount(acc) {
+  if (!acc.masteredPoems) acc.masteredPoems = [];
+}
 function getAccount() {
   return state.accounts.find(a => a.id === state.currentAccountId) || state.accounts[0];
 }
 function addAccountRaw(name) {
   const id = 'acc_' + Date.now();
-  state.accounts.push({ id, name, records: [] });
+  state.accounts.push({ id, name, records: [], masteredPoems: [] });
   state.currentAccountId = id;
   saveState();
   return id;
+}
+
+// 熟背相关
+function isMastered(poemId) {
+  const acc = getAccount();
+  if (!acc) return false;
+  return (acc.masteredPoems || []).includes(poemId);
+}
+function toggleMastered(poemId) {
+  const acc = getAccount();
+  if (!acc) return;
+  if (!acc.masteredPoems) acc.masteredPoems = [];
+  const idx = acc.masteredPoems.indexOf(poemId);
+  if (idx >= 0) acc.masteredPoems.splice(idx, 1);
+  else acc.masteredPoems.push(poemId);
+  saveState();
+  renderDetail();
+  renderSidebar();
 }
 function isCheckedIn(poemId) {
   const acc = getAccount();
@@ -1419,6 +1445,10 @@ function renderEbbinghausSVG(eb) {
 
 function renderEbbinghausHTML(poem) {
   const dates = getCheckInDates(poem.id);
+  const mastered = isMastered(poem.id);
+  if (mastered) {
+    return `<div class="ebb-empty">🎉 <b>已熟背</b> · 这首诗已掌握，不再提示艾宾浩斯复习。</div>`;
+  }
   if (!dates.length) {
     return `<div class="ebb-empty">📅 打卡后，这里会按 <b>艾宾浩斯遗忘曲线</b> 为你生成复习计划：第 1、2、4、7、11、15、21 天各复习一次，记忆最牢固。</div>`;
   }
@@ -1431,8 +1461,7 @@ function renderEbbinghausHTML(poem) {
     let badge, cls;
     if (m.status === 'done') { cls = 'done'; badge = '✅ 已复习'; }
     else if (m.status === 'upcoming') {
-      const left = Math.ceil((m.target - new Date()) / 86400000);
-      cls = 'upcoming'; badge = '⏳ ' + left + '天后';
+      cls = 'upcoming'; badge = '⏳ 待复习';
     } else { cls = 'missed'; badge = '⚠️ 已错过'; }
     sched += `<div class="ebb-item ${cls}">
       <span class="ebb-day">${labels[m.day]}</span>
@@ -1451,13 +1480,15 @@ function renderEbbinghausHTML(poem) {
     <div class="ebb-schedule">${sched}</div>`;
 }
 
-// 打卡 tab 顶部的「复习提醒」总览（按诗去重）
+// 打卡 tab 顶部的「复习提醒」总览（按诗去重，排除已熟背）
 function renderReviewOverview(account) {
   const acc = account || getAccount();
+  migrateAccount(acc);
   if (!acc || !acc.records.length) return '';
   const seen = {};
   acc.records.forEach(r => { if (!seen[r.poemId]) seen[r.poemId] = r; });
   const rows = Object.keys(seen).map(pid => {
+    if (isMastered(pid)) return '';
     const poem = findPoem(pid);
     if (!poem) return '';
     const eb = computeEbbinghaus(pid);
@@ -1465,7 +1496,7 @@ function renderReviewOverview(account) {
     let statusTxt, cls;
     if (!eb.next) { statusTxt = '✅ 复习完成'; cls = 'ok'; }
     else if (eb.next.status === 'missed') { statusTxt = '⚠️ 复习已错过'; cls = 'due'; }
-    else { const left = Math.ceil((eb.next.target - new Date()) / 86400000); statusTxt = `⏳ ${left}天后复习`; cls = ''; }
+    else { statusTxt = '⏳ 待复习'; cls = ''; }
     return `<div class="review-row"><span class="rv-name">${poem.title}</span><span class="rv-status ${cls}">${statusTxt}</span></div>`;
   }).filter(Boolean);
   if (!rows.length) return '';
@@ -1686,6 +1717,9 @@ function renderDetail() {
           ${checked ? `<button class="undo-btn" onclick="undoCheckin()">↩ 撤销上次</button>` : ''}
           <button class="speak-btn ${state.speaking ? 'playing' : ''}" id="speakBtn" onclick="speak()">
             ${state.speaking ? '🔊 朗读中...' : '🔈 点击听读'}
+          </button>
+          <button class="mastered-btn ${isMastered(poem.id) ? 'active' : ''}" id="masteredBtn" onclick="toggleMastered('${poem.id}')">
+            ${isMastered(poem.id) ? '⭐ 已熟背' : '☆ 标记熟背'}
           </button>
         </div>
       </div>
