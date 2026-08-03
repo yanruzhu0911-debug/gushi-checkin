@@ -1420,10 +1420,10 @@ function renderEbbinghausSVG(eb) {
 function renderEbbinghausHTML(poem) {
   const dates = getCheckInDates(poem.id);
   if (!dates.length) {
-    return `<div class="ebb-empty">📅 打卡后，这里会按 <b>艾宾浩斯遗忘曲线</b> 为你生成复习计划：第 1、2、4、7、15、30 天各复习一次，记忆最牢固。</div>`;
+    return `<div class="ebb-empty">📅 打卡后，这里会按 <b>艾宾浩斯遗忘曲线</b> 为你生成复习计划：第 1、2、4、7、11、15、21 天各复习一次，记忆最牢固。</div>`;
   }
   const eb = computeEbbinghaus(poem.id);
-  const labels = { 1: '第1天', 2: '第2天', 4: '第4天', 7: '第7天', 15: '第15天', 30: '第30天' };
+  const labels = { 1: '第1天', 2: '第2天', 4: '第4天', 7: '第7天', 11: '第11天', 15: '第15天', 21: '第21天' };
   let doneCount = 0, sched = '';
   eb.milestones.forEach(m => {
     if (m.done) doneCount++;
