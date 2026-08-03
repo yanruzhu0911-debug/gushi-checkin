@@ -1353,7 +1353,7 @@ function renderPoemsTab(container) {
     const lvl = POETRY_DATA[lvlKey];
     if (!lvl) continue;
     const lid = 'lvl_' + lvlKey;
-    const lExp = state.expanded[lid] !== false; // 学段默认展开
+    const lExp = state.expanded[lid] === true; // 学段默认收起
     html += `<div class="tree-grade">
       <div class="tree-node tree-level-node" onclick="toggleNode('${lid}')">
         <span class="tree-arrow">${lExp ? '▾' : '▸'}</span>
@@ -1369,7 +1369,7 @@ function renderPoemsTab(container) {
       });
       Object.keys(gradeMap).forEach(g => {
         const gid = 'g_' + g;
-        const gExp = state.expanded[gid] !== false; // 年级默认展开
+        const gExp = state.expanded[gid] === true; // 年级默认收起
         html += `<div class="tree-grade">
           <div class="tree-node tree-grade-node" onclick="toggleNode('${gid}')">
             <span class="tree-arrow">${gExp ? '▾' : '▸'}</span>
