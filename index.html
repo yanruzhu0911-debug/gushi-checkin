@@ -1538,10 +1538,9 @@ function renderEbbinghausHTML(poem) {
     if (m.done) doneCount++;
     const tDate = m.target.toLocaleDateString('zh-CN');
     let badge, cls;
-    if (m.status === 'done') { cls = 'done'; badge = '✅ 已复习'; }
-    else if (m.status === 'upcoming') {
-      cls = 'upcoming'; badge = '⏳ 待复习';
-    } else { cls = 'missed'; badge = '⚠️ 已错过'; }
+    if (m.status === 'done') { cls = 'done'; badge = '✅ 已打卡'; }
+    else if (m.status === 'upcoming') { cls = 'upcoming'; badge = '📅 待打卡'; }
+    else { cls = 'missed'; badge = '⚠️ 立即打卡'; }
     sched += `<div class="ebb-item ${cls}">
       <span class="ebb-day">${labels[m.day]}</span>
       <span class="ebb-date">${tDate}</span>
@@ -1550,9 +1549,9 @@ function renderEbbinghausHTML(poem) {
   });
   const nextTxt = eb.next
     ? (eb.next.status === 'upcoming'
-        ? `下次复习：${eb.next.target.toLocaleDateString('zh-CN')}（${labels[eb.next.day]}）`
-        : `⚠️ ${labels[eb.next.day]}的复习已错过，建议尽快补复习`)
-    : '🎉 全部复习节点完成，记忆已牢固！';
+        ? `下次打卡：${eb.next.target.toLocaleDateString('zh-CN')}（${labels[eb.next.day]}）`
+        : `⚠️ ${labels[eb.next.day]}的打卡已错过，请尽快打卡`)
+    : '🎉 全部打卡节点完成，记忆已牢固！';
   return `<div class="ebb-summary">已打卡 <b>${dates.length}</b> 次 · 首次学习 ${eb.learn.toLocaleDateString('zh-CN')} · 复习进度 <b>${doneCount}/${EBB_INTERVALS.length}</b></div>
     <div class="ebb-chart">${renderEbbinghausSVG(eb)}</div>
     <div class="ebb-next">${nextTxt}</div>
@@ -1573,9 +1572,9 @@ function renderReviewOverview(account) {
     const eb = computeEbbinghaus(pid);
     if (!eb) return '';
     let statusTxt, cls;
-    if (!eb.next) { statusTxt = '✅ 复习完成'; cls = 'ok'; }
-    else if (eb.next.status === 'missed') { statusTxt = '⚠️ 复习已错过'; cls = 'due'; }
-    else { statusTxt = '⏳ 待复习'; cls = ''; }
+    if (!eb.next) { statusTxt = '✅ 已打卡'; cls = 'ok'; }
+    else if (eb.next.status === 'missed') { statusTxt = '⚠️ 立即打卡'; cls = 'due'; }
+    else { statusTxt = '📅 待打卡'; cls = ''; }
     return `<div class="review-row"><span class="rv-name">${poem.title}</span><span class="rv-status ${cls}">${statusTxt}</span></div>`;
   }).filter(Boolean);
   if (!rows.length) return '';
@@ -2008,7 +2007,7 @@ function renderDetail() {
       </div>
 
       <div class="detail-section">
-        <div class="section-title">📖 全文解释</div>
+        <div class="section-title">释义</div>
         <div class="shiyi">${shiyiHtml}</div>
       </div>
 
