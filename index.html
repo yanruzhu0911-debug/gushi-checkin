@@ -204,6 +204,23 @@ body{font-family:'Noto Serif SC','Songti SC',Georgia,serif;background:var(--bg);
 .detail-box{padding:20px 18px}
 .header .title{font-size:1.1rem}
 }
+
+/* ===== 诗文标题行听读按钮 ===== */
+.poem-title-row{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.title-actions{display:inline-flex;align-items:center;gap:4px;margin-left:8px}
+.title-actions .speak-btn{padding:3px 6px;font-size:.8rem;margin-top:0}
+
+/* ===== 记录分组折叠 ===== */
+.date-group{margin:8px 0}
+.date-summary{font-size:.82rem;color:var(--muted);font-weight:600;cursor:pointer;padding:4px 0;list-style:none}
+.date-summary::-webkit-details-marker{display:none}
+.date-summary::before{margin-right:4px}
+.date-records{padding:4px 0}
+
+/* ===== undo按钮 ===== */
+.undo-btn{background:#f0f0f0;color:#666;border:1px solid #ccc;border-radius:8px;padding:6px 12px;font-size:.82rem;cursor:pointer;margin-left:4px}
+.undo-btn:hover{background:#e0e0e0}
+
 </style>
 </head>
 <body>
@@ -1861,7 +1878,11 @@ function renderRecordsTab(container, account) {
     });
     Object.entries(byDate).forEach(([date, recs]) => {
       const isToday = date === today;
-      html += `<div style="font-size:.78rem;color:var(--muted);margin:12px 0 4px;font-weight:600;">${isToday ? '🗓 今日' : '📅 '+date}</div>`;
+      html += `<details class="date-group" ${isToday ? 'open' : ''}>
+
+        <summary class="date-summary">${isToday ? '🗓 今天' : '📅 ' + date}</summary>
+
+        <div class="date-records">`;
       recs.forEach(r => {
         const poem = findPoem(r.poemId);
         if (!poem) return;
@@ -1874,6 +1895,7 @@ function renderRecordsTab(container, account) {
           <div class="record-time">${time}</div>
         </div>`;
       });
+      html += `</div></details>`;
     });
   }
   container.innerHTML = html;
@@ -1951,7 +1973,16 @@ function renderDetail() {
       <audio id="speakAudio" style="display:none"></audio>
       <div class="detail-header">
         <div class="detail-title">
-          <h2>${poem.title}</h2>
+          <h2 class="poem-title-row">${poem.title}
+            <span class="title-actions">
+              <button class="speak-btn ${state.speaking !== 'idle' ? 'active' : ''}" id="speakBtn" onclick="toggleSpeak()" title="开始朗读">
+                ${state.speaking === 'idle' ? '🔈' : '⏹'}
+              </button>
+              <button class="speak-btn paused-btn" id="pauseBtn" onclick="togglePause()" style="display:${state.speaking === 'playing' || state.speaking === 'paused' ? '' : 'none'}" title="暂停">
+                ${state.speaking === 'playing' ? '⏸' : '▶'}
+              </button>
+            </span>
+          </h2>
           <div class="author">${poem.dynasty} · ${poem.author} · ${poem.grade} · 已打卡 ${checkCount} 次</div>
         </div>
         <div class="detail-actions">
@@ -1977,7 +2008,7 @@ function renderDetail() {
       </div>
 
       <div class="detail-section">
-        <div class="section-title">释义</div>
+        <div class="section-title">📖 全文解释</div>
         <div class="shiyi">${shiyiHtml}</div>
       </div>
 
@@ -2113,12 +2144,24 @@ function undoCheckin() {
   if (!poem) return;
   const acc = getAccount();
   if (!acc) return;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let found = false;
   for (let i = acc.records.length - 1; i >= 0; i--) {
-    if (acc.records[i].poemId === poem.id) {
+    const r = acc.records[i];
+    if (r.poemId === poem.id) {
+      const rDate = new Date(r.date);
+      rDate.setHours(0, 0, 0, 0);
+      if (rDate.getTime() !== today.getTime()) {
+        alert('仅可撤销今日打卡，往日的打卡记录不可撤销');
+        break;
+      }
       acc.records.splice(i, 1);
+      found = true;
       break;
     }
   }
+  if (!found) return;
   saveState();
   renderDetail();
   renderSidebar();
