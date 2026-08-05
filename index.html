@@ -76,7 +76,6 @@ body{font-family:'Noto Serif SC','Songti SC',Georgia,serif;background:var(--bg);
 .detail-box{background:var(--card);border-radius:16px;padding:28px 32px;box-shadow:var(--shadow);max-width:800px;margin:0 auto}
 .detail-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;gap:10px}
 .detail-title h2{font-size:1.6rem;color:var(--primary-dark);margin-bottom:4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.speak-btn-inline{display:inline-flex;align-items:center;gap:5px;background:#eef5f0;color:var(--primary);border:1.5px solid var(--primary);border-radius:20px;padding:4px 14px;cursor:pointer;font-size:.78rem;font-weight:600;transition:all .2s;font-family:inherit;vertical-align:middle;margin-left:8px}
 .speak-btn-inline:hover{background:#d4ebd9}
 .speak-btn-inline.playing{background:var(--primary);color:#fff;border-color:var(--primary)}
 .speak-btn-inline.paused{background:#f5e8d0;color:#c07030;border-color:#c07030}
@@ -192,7 +191,8 @@ body{font-family:'Noto Serif SC','Songti SC',Georgia,serif;background:var(--bg);
 /* speak button */
 .speak-btn{background:#eef5f0;color:var(--primary);border:1.5px solid var(--primary);border-radius:10px;padding:8px 18px;cursor:pointer;font-size:.82rem;font-family:inherit;transition:all .2s;display:inline-flex;align-items:center;gap:5px}
 .speak-btn:hover{background:#d4ebd9}
-.speak-btn.playing{background:var(--primary);border-color:var(--primary);color:#fff}
+.speak-btn.playing,.speak-btn.active{background:var(--primary);border-color:var(--primary);color:#fff}
+.speak-btn.paused-btn{background:#fff5ee;color:#e07b39;border-color:#e07b39}
 /* loading */
 .loading{display:none;text-align:center;padding:40px;color:var(--muted)}
 .loading.active{display:block}
@@ -328,7 +328,7 @@ const POETRY_DATA = {
         {id:'p4-7',title:'四时田园杂兴（其二十五）',author:'范成大',dynasty:'宋',grade:'小学四年级下',content:['梅子金黄杏子肥','麦花雪白菜花稀','日长篱落无人过','惟有蜻蜓蛱蝶飞'],shiyi:['1.四时：四季。','2.杂兴：随兴而写的诗。'],audioText:'梅子金黄杏子肥，麦花雪白菜花稀。日长篱落无人过，惟有蜻蜓蛱蝶飞。'},
         {id:'p4-8',title:'宿新市徐公店',author:'杨万里',dynasty:'宋',grade:'小学四年级下',content:['篱落疏疏一径深','树头新绿未成阴','儿童急走追黄蝶','飞入菜花无处寻'],shiyi:['1.阴：树荫。'],audioText:'篱落疏疏一径深，树头新绿未成阴。儿童急走追黄蝶，飞入菜花无处寻。'},
         {id:'p4-9',title:'清平乐·村居',author:'辛弃疾',dynasty:'宋',grade:'小学四年级下',content:['茅檐低小','溪上青青草','醉里吴音相媚好','白发谁家翁媪','大儿锄豆溪东','中儿正织鸡笼','最喜小儿亡赖','溪头卧剥莲蓬'],shiyi:['1.翁媪：老翁和老妇。','2.亡赖：顽皮。'],audioText:'茅檐低小，溪上青青草。醉里吴音相媚好，白发谁家翁媪？'},
-        {id:'p4-10',title:'卜算子·咏梅',author:'毛泽东',dynasty:'现代',grade:'小学四年级下',content:['风雨送春归','飞雪迎春到','已是悬崖百丈冰','犹有花枝俏','俏也不争春','只把春来报','待到山花烂漫时','她在丛中笑'],shiyi:[],audioText:'风雨送春归，飞雪迎春到。已是悬崖百丈冰，犹有花枝俏。'},
+        {id:'p4-10',title:'卜算子·咏梅',author:'毛泽东',dynasty:'现代',grade:'小学四年级下',content:['风雨送春归','飞雪迎春到','已是悬崖百丈冰','犹有花枝俏','俏也不争春','只把春来报','待到山花烂漫时','她在丛中笑'],shiyi:['1.送春：送别春天。','2.百丈冰：形容极度寒冷，冰柱高悬。','3.犹：仍然。','4.花枝俏：美丽的花枝。俏，美丽。','5.烂漫：颜色鲜明、姿态自由的样子。'],audioText:'风雨送春归，飞雪迎春到。已是悬崖百丈冰，犹有花枝俏。'},
         {id:'p4-11',title:'蜂',author:'罗隐',dynasty:'唐',grade:'小学四年级下',content:['不论平地与山尖','无限风光尽被占','采得百花成蜜后','为谁辛苦为谁甜'],shiyi:['1.山尖：山顶。'],audioText:'不论平地与山尖，无限风光尽被占。采得百花成蜜后，为谁辛苦为谁甜。'},
         {id:'p4-12',title:'独坐敬亭山',author:'李白',dynasty:'唐',grade:'小学四年级下',content:['众鸟高飞尽','孤云独去闲','相看两不厌','只有敬亭山'],shiyi:['1.敬亭山：在今安徽宣城。'],audioText:'众鸟高飞尽，孤云独去闲。相看两不厌，只有敬亭山。'},
       ]},
@@ -1951,14 +1951,17 @@ function renderDetail() {
       <audio id="speakAudio" style="display:none"></audio>
       <div class="detail-header">
         <div class="detail-title">
-          <h2>${poem.title}
-            <button class="speak-btn-inline" id="speakBtnInline" onclick="speak()">
-              <span id="speakBtnIcon">🔈</span><span id="speakBtnText">开始听读</span>
-            </button>
-          </h2>
+          <h2>${poem.title}</h2>
           <div class="author">${poem.dynasty} · ${poem.author} · ${poem.grade} · 已打卡 ${checkCount} 次</div>
         </div>
         <div class="detail-actions">
+          <button class="speak-btn ${state.speaking !== 'idle' ? 'active' : ''}" id="speakBtn" onclick="toggleSpeak()">
+            ${state.speaking === 'idle' ? '🔈 开始朗读' : '⏹ 停止'}
+          </button>
+          ${state.speaking === 'playing' || state.speaking === 'paused' ? `
+          <button class="speak-btn paused-btn" id="pauseBtn" onclick="togglePause()">
+            ${state.speaking === 'playing' ? '⏸ 暂停' : '▶ 继续'}
+          </button>` : ''}
           <button class="checkin-btn ${checked ? 'checked' : ''}" id="checkinBtn" onclick="doCheckin()">
             ${checked ? '✅ 再次打卡' : '📝 打卡' }
           </button>
@@ -1994,40 +1997,51 @@ function renderDetail() {
 // ===== ACTIONS =====
 let currentUtterance = null;
 
-function speak() {
+
+// Start朗读 或 停止
+function toggleSpeak() {
   const poem = state.currentPoem;
   if (!poem) return;
+  if (state.speaking === 'playing' || state.speaking === 'paused') {
+    doStopSpeak();
+    return;
+  }
+  // 开始
   const audio = document.getElementById('speakAudio');
   if (!audio) { fallbackSpeak(poem); return; }
-
-  const st = state.speaking; // 'idle' | 'playing' | 'paused'
-
-  if (st === 'playing') {
-    // 暂停
-    audio.pause();
-    state.speaking = 'paused';
-    updateSpeakBtn();
-  } else if (st === 'paused') {
-    // 继续
-    audio.play();
-    state.speaking = 'playing';
-    updateSpeakBtn();
-  } else {
-    // 重新/开始
-    let fell = false;
-    const doFallback = () => { if (fell) return; fell = true; fallbackSpeak(poem); };
-    audio.onended = () => { state.speaking = 'idle'; updateSpeakBtn(); };
-    audio.onerror = doFallback;
-    audio.src = 'audio/' + poem.id + '.mp3';
-    audio.currentTime = 0;
-    audio.playbackRate = 1;
-    state.speaking = 'playing';
-    updateSpeakBtn();
-    const p = audio.play();
-    if (p && p.catch) p.catch(doFallback);
-  }
+  let fell = false;
+  const doFallback = () => { if (fell) return; fell = true; fallbackSpeak(poem); };
+  audio.onended = () => { doStopSpeak(); };
+  audio.onerror = doFallback;
+  audio.src = 'audio/' + poem.id + '.mp3';
+  audio.currentTime = 0;
+  audio.playbackRate = 1;
+  state.speaking = 'playing';
+  renderDetail();
+  const p = audio.play();
+  if (p && p.catch) p.catch(doFallback);
 }
 
+// 暂停 或 继续
+function togglePause() {
+  const audio = document.getElementById('speakAudio');
+  if (!audio) return;
+  if (state.speaking === 'playing') {
+    audio.pause();
+    state.speaking = 'paused';
+  } else if (state.speaking === 'paused') {
+    audio.play();
+    state.speaking = 'playing';
+  }
+  renderDetail();
+}
+
+function doStopSpeak() {
+  const audio = document.getElementById('speakAudio');
+  if (audio) { audio.pause(); audio.currentTime = 0; }
+  state.speaking = 'idle';
+  renderDetail();
+}
 
 function fallbackSpeak(poem) {
   if (!('speechSynthesis' in window)) {
@@ -2054,45 +2068,9 @@ function stopSpeak() {
   updateSpeakBtn();
 }
 
-function updateSpeakBtn() {
-  const iconEl = document.getElementById('speakBtnIcon');
-  const textEl = document.getElementById('speakBtnText');
-  const btn = document.getElementById('speakBtnInline');
-  if (!iconEl || !textEl || !btn) return;
-  const st = state.speaking;
-  btn.className = 'speak-btn-inline' + (st === 'playing' ? ' playing' : st === 'paused' ? ' paused' : '');
-  if (st === 'playing') { iconEl.textContent = '⏸'; textEl.textContent = '暂停'; }
-  else if (st === 'paused') { iconEl.textContent = '▶'; textEl.textContent = '继续'; }
-  else { iconEl.textContent = '🔈'; textEl.textContent = '开始听读'; }
-}
 
-function setSpeakBtn(playing) { updateSpeakBtn(); }
-function resetSpeakBtn() { state.speaking = 'idle'; updateSpeakBtn(); }
 
-function doCheckin() {
-  const poem = state.currentPoem;
-  if (!poem) return;
-  const acc = getAccount();
-  if (!acc) return;
 
-  const first = !isCheckedIn(poem.id);
-  acc.records.push({
-    poemId: poem.id,
-    date: new Date().toISOString()
-  });
-  saveState();
-
-  // Re-render detail (updates button + Ebbinghaus) and sidebar counts
-  renderDetail();
-  renderSidebar();
-
-  // Show brief celebration
-  const toast = document.createElement('div');
-  toast.style = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#4a7c59,#6a9c79);color:#fff;padding:12px 28px;border-radius:30px;font-size:.95rem;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.2);transition:opacity .5s';
-  toast.textContent = `🎉 "${poem.title}" 打卡成功！`;
-  document.body.appendChild(toast);
-  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 2000);
-}
 
 function undoCheckin() {
   const poem = state.currentPoem;
