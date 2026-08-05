@@ -1737,10 +1737,11 @@ function renderPoemsTab(container) {
                 const smart = isSmartPoem(p.id);
                 const mastered = isMastered(p.id);
                 const active = state.currentPoem?.id === p.id ? 'active' : '';
+                const cnt = (account?.records || []).filter(r => r.poemId === p.id).length;
+                const cntHtml = cnt > 0 ? `<span style="font-size:.72rem;color:var(--primary);background:#eef5f0;border-radius:10px;padding:1px 7px;margin-left:4px;font-weight:600">${cnt}</span>` : '';
                 html += `<div class="tree-poem ${active}">
                   <div class="tree-poem-row" onclick="selectPoem('${p.id}')">
-                    
-                    <span class="tree-label">${p.title}</span>
+                    <span class="tree-label">${p.title}${cntHtml}</span>
                   </div>
                   <div class="tree-poem-actions">
                     <span class="tree-icon-btn ${smart ? 'active' : ''}" onclick="event.stopPropagation();toggleSmartPoem('${p.id}')" title="加入智能打卡">${smart ? '✓' : '+'}</span>
@@ -1805,7 +1806,7 @@ function renderMasteredStats() {
 function renderRecordsTab(container, account) {
   const records = account?.records || [];
   const today = new Date().toDateString();
-  let html = renderMasteredStats() + renderReviewOverview(account);
+  let html = renderMasteredStats();
   if (records.length === 0) {
     html += `<div style="text-align:center;padding:24px 20px;color:var(--muted);font-size:.85rem">
       <div style="font-size:2rem;opacity:.3;margin-bottom:8px">📋</div>
@@ -1918,7 +1919,7 @@ function renderDetail() {
         </div>
         <div class="detail-actions">
           <button class="checkin-btn ${checked ? 'checked' : ''}" id="checkinBtn" onclick="doCheckin()">
-            ${checked ? '✅ 已打卡' : '📝 打卡' }
+            ${checked ? '✅ 再次打卡' : '📝 打卡' }
           </button>
           ${checked ? `<button class="undo-btn" onclick="undoCheckin()">↩ 撤销</button>` : ''}
           <button class="speak-btn ${state.speaking ? 'playing' : ''}" id="speakBtn" onclick="speak()">
@@ -1942,10 +1943,6 @@ function renderDetail() {
         <div class="shiyi">${shiyiHtml}</div>
       </div>
 
-      <div class="detail-section">
-        <div class="section-title">📈 复习曲线（艾宾浩斯遗忘曲线）</div>
-        ${renderEbbinghausHTML(poem)}
-      </div>
     </div>
   `;
 }
