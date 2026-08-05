@@ -1941,6 +1941,12 @@ function renderDetail() {
         <div class="shiyi">${shiyiHtml}</div>
       </div>
 
+      ${isSmartPoem(poem.id) ? `
+      <div class="detail-section">
+        <div class="section-title">📈 复习曲线（艾宾浩斯遗忘曲线）</div>
+        ${renderEbbinghausHTML(poem)}
+      </div>
+      ` : ''}
     </div>
   `;
 }
