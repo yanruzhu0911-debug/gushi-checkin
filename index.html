@@ -75,7 +75,11 @@ body{font-family:'Noto Serif SC','Songti SC',Georgia,serif;background:var(--bg);
 .detail-empty .icon{font-size:4rem;opacity:.3}
 .detail-box{background:var(--card);border-radius:16px;padding:28px 32px;box-shadow:var(--shadow);max-width:800px;margin:0 auto}
 .detail-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;gap:10px}
-.detail-title h2{font-size:1.6rem;color:var(--primary-dark);margin-bottom:4px}
+.detail-title h2{font-size:1.6rem;color:var(--primary-dark);margin-bottom:4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.speak-btn-inline{display:inline-flex;align-items:center;gap:5px;background:#eef5f0;color:var(--primary);border:1.5px solid var(--primary);border-radius:20px;padding:4px 14px;cursor:pointer;font-size:.78rem;font-weight:600;transition:all .2s;font-family:inherit;vertical-align:middle;margin-left:8px}
+.speak-btn-inline:hover{background:#d4ebd9}
+.speak-btn-inline.playing{background:var(--primary);color:#fff;border-color:var(--primary)}
+.speak-btn-inline.paused{background:#f5e8d0;color:#c07030;border-color:#c07030}
 .detail-title .author{color:var(--muted);font-size:.9rem}
 .detail-actions{display:flex;gap:8px;flex-wrap:wrap}
 .checkin-btn{background:#eef5f0;color:var(--primary);border:1.5px solid var(--primary);border-radius:10px;padding:8px 18px;cursor:pointer;font-size:.88rem;font-weight:600;transition:all .2s;font-family:inherit;display:flex;align-items:center;gap:6px}
@@ -1805,6 +1809,41 @@ function renderRecordsTab(container, account) {
   const records = account?.records || [];
   const today = new Date().toDateString();
   let html = renderMasteredStats();
+
+  // ===== 已打卡进度 =====
+  const acc = getAccount();
+  migrateAccount(acc);
+  const recCount = acc?.records?.length || 0;
+  const uniquePoems = acc?.records ? [...new Set(acc.records.map(r => r.poemId))].length : 0;
+  const totalPoems = Object.values(POETRY_DATA).reduce((s, l) => s + l.units.reduce((u, un) => u + un.items.length, 0), 0);
+  const ciPct = totalPoems ? Math.round(uniquePoems / totalPoems * 100) : 0;
+  const ciLevels = [
+    { key: 'primary', label: '小学', color: '#4a7c59' },
+    { key: 'middle',  label: '初中', color: '#6a9c79' },
+    { key: 'high',    label: '高中', color: '#e8a849' }
+  ];
+  const ciBreakdown = ciLevels.map(lv => {
+    const lvlData = POETRY_DATA[lv.key];
+    const lvlTotal = lvlData.units.reduce((s, un) => s + un.items.length, 0);
+    const lvlCount = acc?.records ? [...new Set(acc.records.filter(r => lvlData.units.some(u => u.items.some(p => p.id === r.poemId))).map(r => r.poemId))].length : 0;
+    const lvlPct = lvlTotal ? Math.round(lvlCount / lvlTotal * 100) : 0;
+    return { ...lv, total: lvlTotal, count: lvlCount, pct: lvlPct };
+  });
+  html += `<div class="mastered-stats" style="margin-top:16px">
+    <div class="mastered-stats-header">
+      <div class="mastered-stats-title">📋 打卡进度</div>
+      <div class="mastered-stats-summary">已打卡 <b>${uniquePoems}</b> 首 / 共 ${totalPoems} 首 · <b>${ciPct}%</b></div>
+    </div>
+    <div class="mastered-bar-wrap"><div class="mastered-bar-fill" style="width:${ciPct}%;background:${ciPct===100?'#4a7c59':'#6a9c79'}"></div></div>
+    <div class="mastered-breakdown">
+      ${ciBreakdown.map(lv => `
+        <div class="mastered-level">
+          <div class="mastered-level-label">${lv.label}</div>
+          <div class="mastered-level-bar-wrap"><div class="mastered-level-bar" style="width:${lv.pct}%;background:${lv.color}"></div></div>
+          <div class="mastered-level-count">${lv.count}/${lv.total} · ${lv.pct}%</div>
+        </div>`).join('')}
+    </div>
+  </div>`;
   if (records.length === 0) {
     html += `<div style="text-align:center;padding:24px 20px;color:var(--muted);font-size:.85rem">
       <div style="font-size:2rem;opacity:.3;margin-bottom:8px">📋</div>
@@ -1912,17 +1951,18 @@ function renderDetail() {
       <audio id="speakAudio" style="display:none"></audio>
       <div class="detail-header">
         <div class="detail-title">
-          <h2>${poem.title}</h2>
-          <div class="author">${poem.dynasty} · ${poem.author} · ${poem.grade}</div>
+          <h2>${poem.title}
+            <button class="speak-btn-inline" id="speakBtnInline" onclick="speak()">
+              <span id="speakBtnIcon">🔈</span><span id="speakBtnText">开始听读</span>
+            </button>
+          </h2>
+          <div class="author">${poem.dynasty} · ${poem.author} · ${poem.grade} · 已打卡 ${checkCount} 次</div>
         </div>
         <div class="detail-actions">
           <button class="checkin-btn ${checked ? 'checked' : ''}" id="checkinBtn" onclick="doCheckin()">
             ${checked ? '✅ 再次打卡' : '📝 打卡' }
           </button>
           ${checked ? `<button class="undo-btn" onclick="undoCheckin()">↩ 撤销</button>` : ''}
-          <button class="speak-btn ${state.speaking ? 'playing' : ''}" id="speakBtn" onclick="speak()">
-            ${state.speaking ? '🔊 朗读中' : '🔈 听读'}
-          </button>
           <button class="mastered-btn ${isMastered(poem.id) ? 'active' : ''}" id="masteredBtn" onclick="toggleMastered('${poem.id}')">
             ${isMastered(poem.id) ? '⭐ 已熟背' : '☆ 标记熟背'}
           </button>
@@ -1954,21 +1994,40 @@ function renderDetail() {
 // ===== ACTIONS =====
 let currentUtterance = null;
 
-function setSpeakBtn(playing) {
-  const btn = document.getElementById('speakBtn');
-  if (!btn) return;
-  if (playing) { btn.classList.add('playing'); btn.textContent = '🔊 朗读中...'; }
-  else { btn.classList.remove('playing'); btn.textContent = '🔈 点击听读'; }
-}
-function resetSpeakBtn() { setSpeakBtn(false); }
-
-function stopSpeak() {
+function speak() {
+  const poem = state.currentPoem;
+  if (!poem) return;
   const audio = document.getElementById('speakAudio');
-  if (audio && !audio.paused) audio.pause();
-  if ('speechSynthesis' in window) speechSynthesis.cancel();
-  state.speaking = false;
-  resetSpeakBtn();
+  if (!audio) { fallbackSpeak(poem); return; }
+
+  const st = state.speaking; // 'idle' | 'playing' | 'paused'
+
+  if (st === 'playing') {
+    // 暂停
+    audio.pause();
+    state.speaking = 'paused';
+    updateSpeakBtn();
+  } else if (st === 'paused') {
+    // 继续
+    audio.play();
+    state.speaking = 'playing';
+    updateSpeakBtn();
+  } else {
+    // 重新/开始
+    let fell = false;
+    const doFallback = () => { if (fell) return; fell = true; fallbackSpeak(poem); };
+    audio.onended = () => { state.speaking = 'idle'; updateSpeakBtn(); };
+    audio.onerror = doFallback;
+    audio.src = 'audio/' + poem.id + '.mp3';
+    audio.currentTime = 0;
+    audio.playbackRate = 1;
+    state.speaking = 'playing';
+    updateSpeakBtn();
+    const p = audio.play();
+    if (p && p.catch) p.catch(doFallback);
+  }
 }
+
 
 function fallbackSpeak(poem) {
   if (!('speechSynthesis' in window)) {
@@ -1976,7 +2035,6 @@ function fallbackSpeak(poem) {
     state.speaking = false; resetSpeakBtn();
     return;
   }
-  // 朗读始终使用完整诗文
   let text = '';
   if (poem.content && poem.content.length) text = poem.content.join('。') + '。';
   else if (poem.audioText) text = poem.audioText;
@@ -1985,30 +2043,31 @@ function fallbackSpeak(poem) {
   const voices = speechSynthesis.getVoices();
   const zhVoice = voices.find(v => v.lang.includes('zh') || v.lang.includes('CN'));
   if (zhVoice) utter.voice = zhVoice;
-  utter.onend = utter.onerror = () => { state.speaking = false; resetSpeakBtn(); };
-  state.speaking = true; setSpeakBtn(true);
+  utter.onend = utter.onerror = () => { state.speaking = 'idle'; resetSpeakBtn(); };
+  state.speaking = 'playing'; setSpeakBtn(true);
   speechSynthesis.cancel(); speechSynthesis.speak(utter);
 }
-
-function speak() {
-  const poem = state.currentPoem;
-  if (!poem) return;
-  if (state.speaking) { stopSpeak(); return; }
-
+function stopSpeak() {
   const audio = document.getElementById('speakAudio');
-  if (audio) {
-    let fell = false;
-    const doFallback = () => { if (fell) return; fell = true; fallbackSpeak(poem); };
-    audio.onended = () => { state.speaking = false; resetSpeakBtn(); };
-    audio.onerror = doFallback;
-    audio.src = 'audio/' + poem.id + '.mp3';
-    state.speaking = true; setSpeakBtn(true);
-    const p = audio.play();
-    if (p && p.catch) p.catch(doFallback);
-    return;
-  }
-  fallbackSpeak(poem);
+  if (audio) { audio.pause(); audio.currentTime = 0; }
+  state.speaking = 'idle';
+  updateSpeakBtn();
 }
+
+function updateSpeakBtn() {
+  const iconEl = document.getElementById('speakBtnIcon');
+  const textEl = document.getElementById('speakBtnText');
+  const btn = document.getElementById('speakBtnInline');
+  if (!iconEl || !textEl || !btn) return;
+  const st = state.speaking;
+  btn.className = 'speak-btn-inline' + (st === 'playing' ? ' playing' : st === 'paused' ? ' paused' : '');
+  if (st === 'playing') { iconEl.textContent = '⏸'; textEl.textContent = '暂停'; }
+  else if (st === 'paused') { iconEl.textContent = '▶'; textEl.textContent = '继续'; }
+  else { iconEl.textContent = '🔈'; textEl.textContent = '开始听读'; }
+}
+
+function setSpeakBtn(playing) { updateSpeakBtn(); }
+function resetSpeakBtn() { state.speaking = 'idle'; updateSpeakBtn(); }
 
 function doCheckin() {
   const poem = state.currentPoem;
