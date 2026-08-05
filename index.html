@@ -1575,27 +1575,63 @@ function renderSidebar() {
 
 // 智能打卡 Tab：显示今天需要复习的任务
 function renderSmartTab(container, account) {
-  const tasks = getTodaySmartTasks();
+  const allTasks = getTodaySmartTasks();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayStr = today.toISOString().slice(0,10);
+
+  const done = [], todayTasks = [], tomorrowTasks = [];
+  allTasks.forEach(t => {
+    const checkedToday = acc => {
+      if (!acc || !acc.records) return false;
+      return acc.records.some(r => r.poemId === t.poemId && r.date.startsWith(todayStr));
+    };
+    const ct = checkedToday(getAccount());
+    if (ct) {
+      done.push(t);
+    } else if (t.diffDays === 1) {
+      tomorrowTasks.push(t);
+    } else {
+      todayTasks.push(t);
+    }
+  });
+
+  const itemHtml = (tasks, type) => tasks.length === 0
+    ? `<div style="font-size:.78rem;color:var(--muted);padding:6px 0">暂无</div>`
+    : tasks.map(t => {
+        const cls = type === 'done' ? 'done' : (t.diffDays < 0 ? 'missed' : 'today');
+        const label = type === 'done' ? '已完成' : (t.diffDays < 0 ? '已逾期' : '今日');
+        return `<div class="smart-task-item ${cls}" onclick="selectPoem('${t.poemId}')">
+          <div class="smart-task-info">
+            <div class="smart-task-title">${t.poem.title}</div>
+            <div class="smart-task-meta">${t.poem.author} · ${t.poem.grade} · ${t.poem.dynasty}</div>
+          </div>
+          <div class="smart-task-badge ${cls}">${label}</div>
+        </div>`;
+      }).join('');
+
+  const acc = getAccount();
+  const empty = allTasks.length === 0 && !acc.smartPoems?.length;
+
   let html = '';
-  if (tasks.length === 0) {
+  if (empty) {
     html = `<div style="text-align:center;padding:40px 20px;color:var(--muted)">
       <div style="font-size:3rem;opacity:.3;margin-bottom:12px">🎯</div>
-      <div>今天没有需要复习的古诗</div>
-      <div style="font-size:.8rem;margin-top:8px">在目录中点击「+」添加任务</div>
+      <div>还没有添加任何智能打卡任务</div>
+      <div style="font-size:.8rem;margin-top:8px">在左侧目录点击诗文旁的「+」添加</div>
     </div>`;
   } else {
-    html += `<div style="font-size:.78rem;color:var(--muted);margin:0 0 12px;font-weight:600;">📅 今天需要复习 ${tasks.length} 首</div>`;
-    tasks.forEach(t => {
-      const status = t.diffDays < 0 ? '已逾期' : '今天';
-      const cls = t.diffDays < 0 ? 'missed' : 'today';
-      html += `<div class="smart-task-item ${cls}" onclick="selectPoem('${t.poemId}')">
-        <div class="smart-task-info">
-          <div class="smart-task-title">${t.poem.title}</div>
-          <div class="smart-task-meta">${t.poem.author} · ${t.poem.grade} · ${t.poem.dynasty}</div>
-        </div>
-        <div class="smart-task-badge ${cls}">${status}</div>
-      </div>`;
-    });
+    html += `<div style="margin-bottom:14px">
+      <div style="font-size:.78rem;color:var(--muted);font-weight:600;margin-bottom:8px">✅ 今日已完成 (${done.length})</div>
+      ${itemHtml(done, 'done')}
+    </div>
+    <div style="margin-bottom:14px">
+      <div style="font-size:.78rem;color:var(--muted);font-weight:600;margin-bottom:8px">📋 今日待完成 (${todayTasks.length})</div>
+      ${itemHtml(todayTasks, 'today')}
+    </div>
+    <div style="margin-bottom:14px">
+      <div style="font-size:.78rem;color:var(--muted);font-weight:600;margin-bottom:8px">📅 明日待完成 (${tomorrowTasks.length})</div>
+      ${itemHtml(tomorrowTasks, 'tomorrow')}
+    </div>`;
   }
   container.innerHTML = html;
 }
