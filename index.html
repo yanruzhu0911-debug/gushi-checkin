@@ -1300,7 +1300,7 @@ let state = {
   currentTab: 'poems',
   accounts: [],
   currentAccountId: null,
-  speaking: 'idle'
+  speaking: 'idle',
   expanded: {}
 };
 
@@ -1879,7 +1879,6 @@ function renderRecordsTab(container, account) {
   container.innerHTML = html;
 }
 
-
 function findPoem(id) {
   for (const level of Object.values(POETRY_DATA)) {
     for (const unit of level.units) {
@@ -2062,7 +2061,6 @@ function fallbackSpeak(poem) {
   state.speaking = 'playing'; setSpeakBtn(true);
   speechSynthesis.cancel(); speechSynthesis.speak(utter);
 }
-function u
 function updateSpeakBtn() {
   const sp = state.speaking;
   const sbBtn = document.getElementById('speakBtn');
@@ -2084,7 +2082,6 @@ function updateSpeakBtn() {
 }
 
 function setSpeakBtn(playing) { updateSpeakBtn(); }
-function updateSpeakBtn() { state.speaking = 'idle'; updateSpeakBtn(); }
 
 function doCheckin() {
   const poem = state.currentPoem;
@@ -2187,7 +2184,7 @@ function deleteAccount(id) {
 function selectPoem(id) {
   const poem = findPoem(id);
   if (!poem) return;
-  if (state.speaking) doStopSpeak(););
+  if (state.speaking) doStopSpeak();
   state.currentPoem = poem;
   // 自动展开所属学段 / 年级 / 单元，确保标题可见
   for (const lvlKey of ['primary', 'middle', 'high']) {
