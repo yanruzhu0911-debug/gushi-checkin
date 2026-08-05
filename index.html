@@ -1628,11 +1628,12 @@ function setNodeState(id, val) { state.expanded[id] = val; }
 function toggleNode(id) {
   const cur = getNodeState(id);
   if (!cur) {
-    const pfx = id.slice(0, 3);
     const order = ['primary', 'middle', 'high'];
-    if (pfx === 'lvl') {
+    if (id.startsWith('lvl_')) {
+      // 学段：收起其他学段
       order.forEach(k => { const nid = 'lvl_' + k; if (nid !== id) setNodeState(nid, false); });
-    } else if (pfx === 'g__') {
+    } else if (id.startsWith('g_')) {
+      // 年级：收起所有学段的所有年级
       const allGk = [];
       order.forEach(lvlKey => {
         const lvl = POETRY_DATA[lvlKey]; if (!lvl) return;
@@ -1643,7 +1644,8 @@ function toggleNode(id) {
         });
       });
       allGk.forEach(k => { if (k !== id) setNodeState(k, false); });
-    } else if (pfx === 'u__') {
+    } else if (id.startsWith('u_')) {
+      // 单元：收起所有学段的所有单元
       const allUk = [];
       order.forEach(lvlKey => {
         const lvl = POETRY_DATA[lvlKey]; if (!lvl) return;
