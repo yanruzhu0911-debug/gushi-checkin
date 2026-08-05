@@ -1737,7 +1737,7 @@ function renderPoemsTab(container) {
                 const smart = isSmartPoem(p.id);
                 const mastered = isMastered(p.id);
                 const active = state.currentPoem?.id === p.id ? 'active' : '';
-                const cnt = (account?.records || []).filter(r => r.poemId === p.id).length;
+                const cnt = (getAccount()?.records || []).filter(r => r.poemId === p.id).length;
                 const cntHtml = cnt > 0 ? `<span style="font-size:.72rem;color:var(--primary);background:#eef5f0;border-radius:10px;padding:1px 7px;margin-left:4px;font-weight:600">${cnt}</span>` : '';
                 html += `<div class="tree-poem ${active}">
                   <div class="tree-poem-row" onclick="selectPoem('${p.id}')">
