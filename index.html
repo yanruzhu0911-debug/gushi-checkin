@@ -1362,7 +1362,7 @@ function toggleSmartPoem(poemId) {
 }
 
 // 获取今天需要复习的智能打卡任务
-function getTodaySmartTasks() {
+function getAllSmartTasks() {
   const acc = getAccount();
   if (!acc || !acc.smartPoems) return [];
   const today = new Date();
@@ -1375,15 +1375,18 @@ function getTodaySmartTasks() {
       const target = new Date(eb.next.target);
       target.setHours(0,0,0,0);
       const diffDays = Math.round((target - today) / 86400000);
-      if (diffDays <= 0) {
-        tasks.push({ poemId: pid, poem: findPoem(pid), next: eb.next, diffDays });
-      }
+      // diffDays: <0=逾期, 0=今天, 1=明天, 2+=未来
+      tasks.push({ poemId: pid, poem: findPoem(pid), next: eb.next, diffDays });
     } else {
       // 尚未打卡：显示为"未开始"
       tasks.push({ poemId: pid, poem: findPoem(pid), next: null, diffDays: -999 });
     }
   });
   return tasks.sort((a,b) => a.diffDays - b.diffDays);
+}
+function getTodaySmartTasks() {
+  // 兼容旧调用：只返回今天应复习的（diffDays <= 0 且 diffDays != 1）
+  return getAllSmartTasks().filter(t => t.diffDays <= 0);
 }
 
 // 熟背相关
@@ -1575,17 +1578,13 @@ function renderSidebar() {
 
 // 智能打卡 Tab：显示今天需要复习的任务
 function renderSmartTab(container, account) {
-  const allTasks = getTodaySmartTasks();
+  const allTasks = getAllSmartTasks();
   const today = new Date(); today.setHours(0,0,0,0);
   const todayStr = today.toISOString().slice(0,10);
 
   const done = [], todayTasks = [], tomorrowTasks = [];
   allTasks.forEach(t => {
-    const checkedToday = acc => {
-      if (!acc || !acc.records) return false;
-      return acc.records.some(r => r.poemId === t.poemId && r.date.startsWith(todayStr));
-    };
-    const ct = checkedToday(getAccount());
+    const ct = (getAccount()?.records || []).some(r => r.poemId === t.poemId && r.date.startsWith(todayStr));
     if (ct) {
       done.push(t);
     } else if (t.diffDays === 1) {
