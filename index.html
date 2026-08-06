@@ -1448,6 +1448,14 @@ function getCheckInDate(poemId) {
   return r ? r.date : null;
 }
 
+// 格式化日期为 YYYY-MM-DD（中文友好的固定格式，避免不同 locale 渲染差异）
+function formatDateKey(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 // 某首诗的全部打卡时间（升序）
 function getCheckInDates(poemId) {
   const acc = getAccount();
@@ -1824,7 +1832,7 @@ function renderMasteredStats() {
 
 function renderRecordsTab(container, account) {
   const records = account?.records || [];
-  const today = new Date().toDateString();
+  const todayKey = formatDateKey(new Date());
   let html = renderMasteredStats();
 
   // ===== 已打卡进度 =====
@@ -1871,12 +1879,12 @@ function renderRecordsTab(container, account) {
     // group by date
     const byDate = {};
     records.slice().reverse().forEach(r => {
-      const d = new Date(r.date).toDateString();
+      const d = formatDateKey(new Date(r.date));
       if (!byDate[d]) byDate[d] = [];
       byDate[d].push(r);
     });
     Object.entries(byDate).forEach(([date, recs]) => {
-      const isToday = date === today;
+      const isToday = date === todayKey;
       html += `<details class="date-group" ${isToday ? 'open' : ''}>
 
         <summary class="date-summary">${isToday ? '🗓 今天' : '📅 ' + date}</summary>
