@@ -1996,10 +1996,7 @@ function renderDetail() {
           <button class="checkin-btn ${checked ? 'checked' : ''}" id="checkinBtn" onclick="doCheckin()">
             ${checked ? '✅ 再次打卡' : '📝 打卡' }
           </button>
-          <button class="speak-btn ${state.speaking !== 'idle' ? 'active' : ''}" id="speakBtn" onclick="toggleSpeak()">
-            ${state.speaking === 'idle' ? '🔈 开始朗读' : '⏹ 停止'}
-          </button>
-          ${checked ? `<button class="undo-btn" onclick="undoCheckin()">↩ 撤销</button>` : ''}
+                  ${checked ? `<button class="undo-btn" onclick="undoCheckin()">↩ 撤销</button>` : ''}
           <button class="mastered-btn ${isMastered(poem.id) ? 'active' : ''}" id="masteredBtn" onclick="toggleMastered('${poem.id}')">
             ${isMastered(poem.id) ? '⭐ 已熟背' : '☆ 标记熟背'}
           </button>
